@@ -25,7 +25,7 @@ dist-ssr
 
 
 # Node.js dependencies
-node_modules/
+*node_modules/
 .env
 .DS_Store
 
