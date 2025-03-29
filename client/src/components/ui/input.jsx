@@ -1,4 +1,5 @@
-import { cn } from "../../lib/utils"
+import React from "react"
+import { cn } from "../../utils/cn"
 
 export const Input = ({ type = "text", label, error, className, required = false, ...props }) => {
   return (

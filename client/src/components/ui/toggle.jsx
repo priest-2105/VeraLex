@@ -1,5 +1,6 @@
 
-import { cn } from "../../lib/utils"
+import React from "react"
+import { cn } from "../../utils/cn"
 
 export const Toggle = ({ checked, onChange, label, className, disabled = false, size = "default", ...props }) => {
   const sizes = {

@@ -1,4 +1,6 @@
-import { cn } from "../../lib/utils"
+import React from "react"
+import { cn } from "../../utils/cn"
+
 
 export const Card = ({ children, className, variant = "default", ...props }) => {
   const variants = {

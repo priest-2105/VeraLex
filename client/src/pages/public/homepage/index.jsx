@@ -1,11 +1,10 @@
-"use client"
-
-import { useState } from "react"
+import React, { useState } from "react"
 import { ChevronDown, ChevronRight, Facebook, Instagram, Linkedin, Twitter, Check, ArrowRight } from "lucide-react"
-import { Button } from "../../components/ui/button"
-import { Input } from "../../components/ui/input"
-import { Accordion } from "../../components/ui/accordion"
+import { Button } from "../../../components/ui/button"
+import { Input } from "../../../components/ui/input"
+import { Accordion } from "../../../components/ui/accordion"
 import { Card, CardContent } from "../../../components/ui/card"
+
 
 export default function Home() {
   // Navigation data

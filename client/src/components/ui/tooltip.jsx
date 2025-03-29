@@ -2,7 +2,8 @@
 
 import { useState, useRef, useEffect } from "react"
 import { createPortal } from "react-dom"
-import { cn } from "../../lib/utils"
+import React from "react"
+import { cn } from "../../utils/cn"
 
 export const Tooltip = ({ children, content, position = "top", delay = 0, className, ...props }) => {
   const [isVisible, setIsVisible] = useState(false)

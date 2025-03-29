@@ -1,5 +1,6 @@
 
-import { cn } from "../../lib/utils"
+import React from "react"
+import { cn } from "../../utils/cn"
 import { Check } from "lucide-react"
 
 export const Checkbox = ({ checked, onChange, label, className, disabled = false, error, id, ...props }) => {

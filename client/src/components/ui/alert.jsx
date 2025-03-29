@@ -1,5 +1,6 @@
 
-import { cn } from "../../lib/utils"
+import React from "react"
+import { cn } from "../../utils/cn"
 import { AlertCircle, CheckCircle, Info, X, AlertTriangle } from "lucide-react"
 
 export const Alert = ({ children, title, variant = "info", className, onClose, ...props }) => {

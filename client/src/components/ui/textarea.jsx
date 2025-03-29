@@ -1,5 +1,6 @@
 import * as React from "react"
 
+import React from "react"
 import { cn } from "../../utils/cn"
 
 const Textarea = React.forwardRef<

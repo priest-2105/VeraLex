@@ -2,7 +2,8 @@
 
 import { useEffect, useRef } from "react"
 import { createPortal } from "react-dom"
-import { cn } from "../../lib/utils"
+import React from "react"
+import { cn } from "../../utils/cn"
 import { X } from "lucide-react"
 
 export const Modal = ({ isOpen, onClose, children, title, size = "default", className, ...props }) => {

@@ -1,7 +1,8 @@
 
 
 import { useState } from "react"
-import { cn } from "../../lib/utils"
+import React from "react"
+import { cn } from "../../utils/cn"
 import { ChevronDown } from "lucide-react"
 
 export const AccordionItem = ({ title, children, isOpen, onToggle, className, ...props }) => {

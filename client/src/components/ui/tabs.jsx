@@ -1,7 +1,8 @@
 
 
 import { useState } from "react"
-import { cn } from "../../lib/utils"
+import React from "react"
+import { cn } from "../../utils/cn"
 
 export const Tabs = ({ tabs = [], activeTab, onChange, className, variant = "default", ...props }) => {
   const [activeIndex, setActiveIndex] = useState(

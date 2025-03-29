@@ -1,7 +1,8 @@
 
 
 import { useState, useRef, useEffect } from "react"
-import { cn } from "../../lib/utils"
+import React from "react"
+import { cn } from "../../utils/cn"
 import { ChevronDown } from "lucide-react"
 
 export const Select = ({

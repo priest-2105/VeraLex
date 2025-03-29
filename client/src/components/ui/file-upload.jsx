@@ -1,7 +1,8 @@
 
 
 import { useState, useRef } from "react"
-import { cn } from "../../lib/utils"
+import React from "react"
+import { cn } from "../../utils/cn"
 import { Upload, X, File, FileText, Image, Film } from "lucide-react"
 
 export const FileUpload = ({
