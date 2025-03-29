@@ -4,7 +4,17 @@ import Home from "./pages/public/homepage/index";
 function App() {
   return (
     <Routes>
+
+
+
       <Route path="/" element={<Home />} />
+
+      
+
+
+
+
+
     </Routes>
   );
 }
