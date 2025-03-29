@@ -1,15 +1,17 @@
 import { Routes, Route } from "react-router-dom";
-import Home from "./pages/public/homepage/index";
 import React from "react";
+import PublicRoute from "./pages/public/routes";
+
+
 
 
 function App() {
   return (
-    <Routes>
+    <>
+      
+      <PublicRoute/>
 
-      <Route path="/" element={<Home />} />
-
-    </Routes>
+    </>
   );
 }
 
