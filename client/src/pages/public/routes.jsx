@@ -8,7 +8,7 @@ function PublicRoute() {
   return (
     <div>
       <PublicNavbar/>
-      <div className="max-w-[1800px] max-sm:px-4 px-12 mx-auto">
+      <div className="max-w-[1800px] max-sm:px-4 px-12 mx-auto pt-24">
       <Routes>
         <Route path="/" element={<Home />} />
       </Routes>
