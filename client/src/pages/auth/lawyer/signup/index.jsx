@@ -366,7 +366,7 @@ export default function LawyerSignUp() {
               label="Portfolio/Resume (Optional)"
               accept=".pdf,.doc,.docx"
               onChange={(file) => handleFileChange("portfolio", file)}
-              maxSize={10485760} // 10MB
+              maxSize={10485760} 
               helperText="Upload your portfolio or resume (PDF, DOC, max 10MB)"
             />
           </div>
@@ -483,7 +483,7 @@ export default function LawyerSignUp() {
         <div className="mt-6 text-center">
           <p className="text-sm text-gray-600">
             Already have an account?{" "}
-            <Link to="/auth/login" className="font-medium text-amber-600 hover:text-amber-500">
+            <Link to="/auth/lawyer/login" className="font-medium text-amber-600 hover:text-amber-500">
               Sign in
             </Link>
           </p>

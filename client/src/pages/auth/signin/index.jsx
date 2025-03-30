@@ -184,7 +184,7 @@ export default function Signin() {
           <CardFooter>
             <p className="text-center text-sm text-gray-600 w-full">
               Don't have an account?{" "}
-              <Link href="/auth/signup" className="font-medium text-amber-600 hover:text-amber-500">
+              <Link href="/auth/user/signup" className="font-medium text-amber-600 hover:text-amber-500">
                 Sign up
               </Link>
             </p>
