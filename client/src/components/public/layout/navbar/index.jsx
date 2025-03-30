@@ -95,7 +95,7 @@ export default function PublicNavbar() {
         <div className="max-w-7xl mx-auto flex justify-between items-center">
           {/* Logo */}
           <div className="flex items-center z-20">
-            <div className="w-24 rounded-md flex items-center justify-center mr-2">
+            <div className="w-8 h-8 bg-amber-600 rounded-md flex items-center justify-center mr-2">
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                 <path
                   d="M18 8H20C20.5523 8 21 8.44772 21 9V21C21 21.5523 20.5523 22 20 22H4C3.44772 22 3 21.5523 3 21V9C3 8.44772 3.44772 8 4 8H6"
