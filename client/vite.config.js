@@ -1,10 +1,18 @@
 import { defineConfig } from 'vite'
-import tailwindcss from '@tailwindcss/vite'
+import react from '@vitejs/plugin-react'
+
 export default defineConfig({
-  plugins: [
-    tailwindcss(),
-  ],
+  plugins: [react()],
   server: {
-    hmr: true, 
+    port: 5173,
+    hmr: {
+      overlay: true,
+    },
+    watch: {
+      usePolling: true,
+    }
   },
+  optimizeDeps: {
+    include: ['react', 'react-dom', 'react-router-dom'],
+  }
 })

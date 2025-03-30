@@ -1,5 +1,5 @@
 import React, { useRef } from "react"
-import { ChevronRight } from "lucide-react"
+import { ChevronRight, Rocket, Users, Zap } from "lucide-react"
 import { motion, useInView } from "framer-motion"
 import { Button } from "../../../../components/ui/button"
 
@@ -8,9 +8,9 @@ export default function HomePageHeroSectionOne() {
   const isInView = useInView(ref, { once: true, amount: 0.3 })
 
   const statsData = [
-    { value: "94%", label: "Success Rate" },
-    { value: "20K+", label: "Active Users" },
-    { value: "99.9%", label: "Uptime" },
+    { value: "94%", label: "Success Rate", icon: <Rocket className="w-4 h-4" /> },
+    { value: "20K+", label: "Active Users", icon: <Users className="w-4 h-4" /> },
+    { value: "99.9%", label: "Uptime", icon: <Zap className="w-4 h-4" /> },
   ]
 
   // Animation variants
@@ -39,7 +39,7 @@ export default function HomePageHeroSectionOne() {
   }
 
   return (
-    <section ref={ref} className="py-12 px-4 md:px-8 md-py-18 lg:px-16 bg-gradient-to-br from-amber-50 to-white overflow-hidden">
+    <section ref={ref} className="py-12 px-4 md:px-8 md:py-40 lg:px-16 bg-gradient-to-br from-amber-50 to-white overflow-hidden">
       <motion.div
         className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center"
         variants={containerVariants}
@@ -47,32 +47,33 @@ export default function HomePageHeroSectionOne() {
         animate={isInView ? "visible" : "hidden"}
       >
         <div>
-          <motion.div variants={itemVariants} className="text-sm text-blue-800 font-medium mb-2">
+          <motion.div variants={itemVariants} className="inline-flex items-center gap-2 text-sm text-blue-800 font-medium mb-2 bg-blue-50 px-3 py-1 rounded-full">
+            <Rocket className="w-4 h-4" />
             SIMPLIFY YOUR LEGAL WORK
           </motion.div>
 
           <motion.h1 variants={itemVariants} className="text-4xl md:text-5xl font-bold text-gray-900 mb-6">
-            Legal Research and Briefing Software
+            A comprehensive platform for legal research and case management
           </motion.h1>
 
-          <motion.p variants={itemVariants} className="text-gray-600 mb-8 md:my-18 text-lg">
-            A comprehensive solution designed to simplify legal research, analysis, and preparation for your clients.
-            The last thing you need is wasted time searching for the right information.
+          <motion.p variants={itemVariants} className="text-gray-600 mb-8 md:my-12 text-lg">
+            Save time and effort with our all-in-one solution for legal research, case management, and document automation—so you can focus on winning cases.
           </motion.p>
 
           <motion.div variants={itemVariants} className="flex flex-wrap gap-4">
-            <Button variant="primary" className="flex items-center">
-              Request a Demo <ChevronRight className="ml-2 h-4 w-4" />
+            <Button variant="primary" className="flex items-center gap-2">
+              Request a Demo <ChevronRight className="h-4 w-4" />
             </Button>
-            <Button variant="outline" className="flex items-center">
-              Play Demo <ChevronRight className="ml-2 h-4 w-4" />
+            <Button variant="outline" className="flex items-center gap-2">
+              Play Demo <ChevronRight className="h-4 w-4" />
             </Button>
           </motion.div>
 
-          <motion.div variants={itemVariants} className="mt-8 flex items-center">
+          <motion.div variants={itemVariants} className="mt-8 grid grid-cols-3 gap-8">
             {statsData.map((stat, index) => (
-              <div key={index} className="mr-8 last:mr-0">
-                <div className="text-amber-600 font-bold text-2xl">{stat.value}</div>
+              <div key={index} className="flex flex-col items-center text-center p-4 bg-white rounded-lg shadow-sm">
+                {stat.icon}
+                <div className="text-amber-600 font-bold text-2xl mt-2">{stat.value}</div>
                 <div className="text-gray-500 text-sm">{stat.label}</div>
               </div>
             ))}
@@ -80,11 +81,11 @@ export default function HomePageHeroSectionOne() {
         </div>
 
         <motion.div variants={itemVariants} className="relative">
-          <div className="rounded-lg overflow-hidden shadow-xl">
+          <div className="rounded-lg overflow-hidden shadow-xl bg-gradient-to-br from-amber-100 to-amber-50 p-1">
             <img
-              src="/placeholder.svg?height=400&width=500"
+              src="/assets/images/legal-team.jpg"
               alt="Legal professionals discussing case"
-              className="w-full h-auto object-cover"
+              className="w-full h-auto object-cover rounded-lg"
             />
           </div>
         </motion.div>

@@ -1,31 +1,33 @@
 import React, { useState } from "react"
-import { ChevronDown, ChevronRight, Facebook, Instagram, Linkedin, Twitter, Check, ArrowRight } from "lucide-react"
+import { ChevronDown, ChevronRight, Facebook, Instagram, Linkedin, Twitter, Check, ArrowRight, Clock, FileText, Mail, Brain } from "lucide-react"
 import { Button } from "../../../components/ui/button"
 import { Input } from "../../../components/ui/input"
 import { Accordion } from "../../../components/ui/accordion"
 import { Card, CardContent } from "../../../components/ui/card"
 import HomePageHeroSectionOne from "../../../components/public/pages/homepage/herosection"
 
-
 export default function Home() {
-  
   // Features data
   const featuresData = [
     {
       title: "Generate Documents",
-      description: "Create perfectly formatted legal documents automatically from your case data.",
+      description: "Instantly create formatted legal documents.",
+      icon: <FileText className="h-5 w-5" />
     },
     {
-      title: "Access Files",
-      description: "Secure, centralized access to all case files from anywhere, anytime.",
+      title: "Access Files Anywhere",
+      description: "Secure cloud storage for all case-related files.",
+      icon: <FileText className="h-5 w-5" />
     },
     {
-      title: "File emails",
-      description: "Automatically categorize and file emails related to specific cases.",
+      title: "Smart Email Filing",
+      description: "Auto-categorize emails linked to specific cases.",
+      icon: <Mail className="h-5 w-5" />
     },
     {
-      title: "Formulate Papers",
-      description: "Draft and review legal papers with AI-assisted formatting and citation.",
+      title: "AI-Powered Drafting",
+      description: "Ensure perfect formatting & citations.",
+      icon: <Brain className="h-5 w-5" />
     },
   ]
 
@@ -43,14 +45,11 @@ export default function Home() {
     { client: "Roberts LLC", date: "Apr 22", amount: "$3,200.00", status: "Confirmed" },
   ]
 
-
-
   // FAQ data
   const faqData = [
     {
-      title: "What does our firm management consulting entail?",
-      content:
-        "Our firm management consulting provides comprehensive analysis and strategic guidance to optimize your law firm's operations, workflow, and profitability. We assess your current processes, identify inefficiencies, and implement tailored solutions to enhance productivity and client satisfaction.",
+      title: "What does your firm management consulting entail?",
+      content: "Our service provides strategic insights, workflow optimization, and tools to enhance productivity and client satisfaction."
     },
     {
       title: "Are you familiar with the latest legal industry trends?",
@@ -147,10 +146,7 @@ export default function Home() {
 
   return (
     <div className="min-h-screen bg-white">
- 
-    
-    <HomePageHeroSectionOne/>
-    
+      <HomePageHeroSectionOne />
 
       {/* Deadline Mastery Section */}
       <section className="py-16 px-4 md:px-8 lg:px-16">
@@ -217,7 +213,7 @@ export default function Home() {
                 <div key={index} className="bg-white p-6 rounded-lg shadow-sm">
                   <div className="flex items-center mb-4">
                     <div className="w-8 h-8 bg-amber-100 rounded-full flex items-center justify-center mr-3">
-                      <Check className="h-4 w-4 text-amber-600" />
+                      {feature.icon}
                     </div>
                     <h3 className="font-medium">{feature.title}</h3>
                   </div>
@@ -409,7 +405,6 @@ export default function Home() {
           ))}
         </div>
       </section>
-      
     </div>
   )
 }
