@@ -9,13 +9,6 @@ import HomePageHeroSectionOne from "../../../components/public/pages/homepage/he
 
 export default function Home() {
   
-  // Stats data
-  const statsData = [
-    { value: "94%", label: "Success Rate" },
-    { value: "20K+", label: "Active Users" },
-    { value: "99.9%", label: "Uptime" },
-  ]
-
   // Features data
   const featuresData = [
     {
@@ -49,6 +42,8 @@ export default function Home() {
     { client: "Smith vs. Davis", date: "Apr 18", amount: "$1,750.00", status: "Scheduled" },
     { client: "Roberts LLC", date: "Apr 22", amount: "$3,200.00", status: "Confirmed" },
   ]
+
+
 
   // FAQ data
   const faqData = [
