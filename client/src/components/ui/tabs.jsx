@@ -66,3 +66,59 @@ export const Tabs = ({ tabs = [], activeTab, onChange, className, variant = "def
 // ];
 // <Tabs tabs={tabItems} />
 
+
+
+
+
+
+// import React from "react"
+// import { cn } from "../../lib/utils"
+
+// export const TabsList = React.forwardRef(({ className, ...props }, ref) => (
+//   <div
+//     className={cn(
+//       "inline-flex items-center justify-center rounded-md p-1 text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 data-[orientation=horizontal]:space-x-1 data-[orientation=vertical]:space-y-1",
+//       className,
+//     )}
+//     ref={ref}
+//     role="tablist"
+//     {...props}
+//   />
+// ))
+// TabsList.displayName = "TabsList"
+
+// export const TabsTrigger = React.forwardRef(({ className, children, ...props }, ref) => (
+//   <button
+//     className={cn(
+//       "inline-flex items-center justify-center whitespace-nowrap rounded-md px-3 py-1.5 text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 data-[state=active]:bg-amber-100 data-[state=active]:text-amber-800 hover:bg-amber-50",
+//       className,
+//     )}
+//     ref={ref}
+//     role="tab"
+//     aria-selected={props["data-state"] === "active"}
+//     {...props}
+//   >
+//     {children}
+//   </button>
+// ))
+// TabsTrigger.displayName = "TabsTrigger"
+
+// export const TabsContent = React.forwardRef(({ className, children, ...props }, ref) => (
+//   <div
+//     className={cn(
+//       "mt-2 ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
+//       className,
+//     )}
+//     ref={ref}
+//     role="tabpanel"
+//     {...props}
+//   >
+//     {children}
+//   </div>
+// ))
+// TabsContent.displayName = "TabsContent"
+
+// export const Tabs = ({ children }) => {
+//   return <>{children}</>
+// }
+

@@ -4,17 +4,17 @@ import Home from "./homepage";
 import PublicNavbar from "../../components/public/layout/navbar";
 import PublicFooter from "../../components/public/layout/footer";
 
-
 function PublicRoute() {
   return (
     <div>
-      <PublicNavbar/>
+      <PublicNavbar />
       <div className="max-w-[1800px] max-sm:px-4 px-12 mx-auto pt-24">
-      <Routes>
-        <Route path="/" element={<Home />} />
-      </Routes>
-    </div>
-      <PublicFooter/>
+        <Routes>
+          <Route index element={<Home />} />
+          <Route path="home" element={<Home />} />
+        </Routes>
+      </div>
+      <PublicFooter />
     </div>
   );
 }
