@@ -89,7 +89,7 @@ export default function PublicNavbar() {
       <header
         className={cn(
           "fixed top-0 left-0 right-0 w-full py-4 px-4 md:px-8 lg:px-16 z-50 transition-all duration-300",
-          isScrolled ? "bg-white shadow-md" : "bg-transparent",
+          isScrolled ? "shadow-md bg-gray-800 text-white" : "bg-transparent text-gray-600",
         )}
       >
         <div className="max-w-7xl mx-auto flex justify-between items-center">
@@ -124,7 +124,7 @@ export default function PublicNavbar() {
                 <div key={index} className="relative group">
                   <a
                     href="#"
-                    className="text-gray-700 hover:text-amber-600 flex items-center py-2"
+                    className=" hover:text-amber-600 flex items-center py-2"
                     onClick={(e) => {
                       if (link.hasDropdown) {
                         e.preventDefault()
@@ -144,7 +144,7 @@ export default function PublicNavbar() {
                         <a
                           key={itemIndex}
                           href={item.href}
-                          className="block px-4 py-2 text-sm text-gray-700 hover:bg-amber-50 hover:text-amber-600"
+                          className="block px-4 py-2 text-sm  hover:bg-amber-50 hover:text-amber-600"
                         >
                           {item.label}
                         </a>
@@ -158,14 +158,14 @@ export default function PublicNavbar() {
   
           {/* Right Side Actions */}
           <div className="flex items-center space-x-4 z-20">
-            <a href="#" className="text-gray-700 hover:text-amber-600 hidden md:block">
+            <a href="#" className=" hover:text-amber-600 hidden md:block">
               Login
             </a>
             <Button variant="primary">Get Started</Button>
   
             {/* Mobile Menu Toggle */}
             <button
-              className="md:hidden menu-button p-1 text-gray-700 hover:text-amber-600 focus:outline-none"
+              className="md:hidden menu-button p-1 text-gray-600 hover:text-amber-600 focus:outline-none"
               onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
             >
               {isMobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
@@ -175,7 +175,7 @@ export default function PublicNavbar() {
           {/* Mobile Menu */}
           <div
             className={cn(
-              "mobile-menu fixed inset-0 bg-white z-10 pt-20 px-4 md:hidden transition-transform duration-300 ease-in-out",
+              "mobile-menu fixed inset-0 bg-white text-gray-600 z-10 pt-20 px-4 md:hidden transition-transform duration-300 ease-in-out",
               isMobileMenuOpen ? "translate-x-0" : "translate-x-full",
             )}
           >
@@ -188,7 +188,7 @@ export default function PublicNavbar() {
                   >
                     <a
                       href={link.hasDropdown ? "#" : "#"}
-                      className="text-gray-700 hover:text-amber-600"
+                      className=" hover:text-amber-600"
                       onClick={(e) => {
                         if (link.hasDropdown) {
                           e.preventDefault()
@@ -222,7 +222,7 @@ export default function PublicNavbar() {
   
               {/* Mobile Login Button */}
               <div className="pt-4">
-                <a href="#" className="block py-2 text-gray-700 hover:text-amber-600">
+                <a href="#" className="block py-2  hover:text-amber-600">
                   Login
                 </a>
               </div>
