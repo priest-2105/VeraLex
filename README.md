@@ -82,12 +82,11 @@ veralex/
 │   ├── services/         # API service functions
 │   ├── types/            # TypeScript type definitions
 │   ├── utils/            # Utility functions
-│   ├── App.tsx           # Main app component
-│   └── main.tsx          # Application entry point
+│   ├── App.jsx           # Main app component
+│   └── main.jsx          # Application entry point
 ├── .gitignore            # Git ignore file
 ├── index.html            # HTML entry
 ├── package.json          # Project dependencies
-├── postcss.config.js     # PostCSS configuration
 ├── README.md             # Project documentation
 ├── tailwind.config.js    # Tailwind CSS configuration
 ├── tsconfig.json         # TypeScript configuration

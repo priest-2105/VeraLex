@@ -13,7 +13,7 @@ const AboutPage = lazy(() => import('./pages/public/AboutPage'))
 const ContactPage = lazy(() => import('./pages/public/ContactPage'))
 
 // Auth Pages
-const SignInPage = lazy(() => import('./pages/auth/SignInPage.sx'))
+const SignInPage = lazy(() => import('./pages/auth/SignInPage'))
 const SignUpPage = lazy(() => import('./pages/auth/SignUpPage'))
 const ForgotPasswordPage = lazy(() => import('./pages/auth/ForgotPasswordPage'))
 
@@ -30,7 +30,7 @@ const MyApplicationsPage = lazy(() => import('./pages/lawyer/MyApplicationsPage'
 const MyClientsPage = lazy(() => import('./pages/lawyer/MyClientsPage'))
 
 // Shared Pages
-const ProfilePage = lazy(() => import('./pages/auth/ProfilePage'))
+const ProfilePage = lazy(() => import('./pages/shared/ProfilePage'))
 const CaseDetailPage = lazy(() => import('./pages/client/CaseDetailPage'))
 
 // Loading Component

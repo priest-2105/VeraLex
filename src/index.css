@@ -1,6 +1,18 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss";
+
+
+/* Theme customization using v4 approach */
+@theme {
+  --color-primary: #1BC2C2;
+  --color-secondary: #2A3855;
+  --color-accent: #475569;
+  --color-background: #FFFFFF;
+  --color-success: #10B981;
+  --color-error: #EF4444;
+  --color-warning: #F59E0B;
+  --color-info: #3B82F6;
+  --font-family-sans: "Poppins", "Inter", sans-serif;
+}
 
 @layer base {
   html {
@@ -8,52 +20,111 @@
   }
   
   body {
-    @apply font-sans text-gray-800 bg-slate-50;
+    font-family: var(--font-family-sans);
+    color: #1f2937;
+    background-color: #f8fafc;
   }
 
   h1, h2, h3, h4, h5, h6 {
-    @apply font-medium text-secondary;
+    font-weight: 500;
+    color: var(--color-secondary);
   }
   
   h1 {
-    @apply text-4xl md:text-5xl;
+    font-size: 2.25rem;
+    line-height: 2.5rem;
+  }
+  @screen md {
+    h1 {
+      font-size: 3rem;
+      line-height: 1;
+    }
   }
   
   h2 {
-    @apply text-3xl md:text-4xl;
+    font-size: 1.875rem;
+    line-height: 2.25rem;
+  }
+  @screen md {
+    h2 {
+      font-size: 2.25rem;
+      line-height: 2.5rem;
+    }
   }
   
   h3 {
-    @apply text-2xl md:text-3xl;
+    font-size: 1.5rem;
+    line-height: 2rem;
+  }
+  @screen md {
+    h3 {
+      font-size: 1.875rem;
+      line-height: 2.25rem;
+    }
   }
 }
 
 @layer components {
   .btn {
-    @apply px-6 py-2 rounded-md transition duration-200 font-medium;
+    padding: 0.75rem 1.5rem;
+    border-radius: 0.375rem;
+    transition-duration: 200ms;
+    font-weight: 500;
   }
   
   .btn-primary {
-    @apply bg-primary hover:bg-primary/90 text-white;
+    background-color: var(--color-primary);
+    color: white;
+  }
+  .btn-primary:hover {
+    background-color: color-mix(in srgb, var(--color-primary) 90%, transparent);
   }
   
   .btn-secondary {
-    @apply bg-secondary hover:bg-secondary/90 text-white;
+    background-color: var(--color-secondary);
+    color: white;
+  }
+  .btn-secondary:hover {
+    background-color: color-mix(in srgb, var(--color-secondary) 90%, transparent);
   }
   
   .btn-outline {
-    @apply border border-primary text-primary hover:bg-primary hover:text-white;
+    border: 1px solid var(--color-primary);
+    color: var(--color-primary);
+  }
+  .btn-outline:hover {
+    background-color: var(--color-primary);
+    color: white;
   }
   
   .card {
-    @apply bg-white p-6 rounded-xl shadow-md hover:shadow-lg transition duration-300;
+    background-color: white;
+    padding: 1.5rem;
+    border-radius: 0.75rem;
+    box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+    transition-duration: 300ms;
+  }
+  .card:hover {
+    box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
   }
   
   .input {
-    @apply w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary;
+    width: 100%;
+    padding: 0.5rem 1rem;
+    border: 1px solid #d1d5db;
+    border-radius: 0.375rem;
+  }
+  .input:focus {
+    outline: none;
+    border-color: var(--color-primary);
+    box-shadow: 0 0 0 2px color-mix(in srgb, var(--color-primary) 50%, transparent);
   }
   
   .badge {
-    @apply inline-block px-2.5 py-1 text-xs font-medium rounded-full;
+    display: inline-block;
+    padding: 0.25rem 0.625rem;
+    font-size: 0.75rem;
+    font-weight: 500;
+    border-radius: 9999px;
   }
 }
