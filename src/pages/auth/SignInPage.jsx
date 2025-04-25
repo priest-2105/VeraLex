@@ -9,7 +9,7 @@ const SignInPage = () => {
   const [error, setError] = useState('')
   const navigate = useNavigate()
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e) => {
     e.preventDefault()
     setError('')
     setIsLoading(true)
@@ -124,4 +124,4 @@ const SignInPage = () => {
   )
 }
 
-export default SignInPage
+export default SignInPage 

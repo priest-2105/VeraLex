@@ -2,119 +2,54 @@ import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 
-// Step components for multi-step form
+
 const RoleSelectionStep = ({ 
   selectedRole, 
   setSelectedRole, 
   nextStep 
-}: { 
-  selectedRole: string | null; 
-  setSelectedRole: (role: string) => void; 
-  nextStep: () => void;
 }) => {
   return (
     <div className="space-y-6">
       <div className="text-center mb-6">
-        <h1 className="text-3xl font-bold text-gray-800">Join VeraLex</h1>
-        <p className="text-gray-600 mt-2">Select your role to get started</p>
+        <h2 className="text-2xl font-bold">I am a...</h2>
+        <p className="text-gray-600 mt-2">Select your role to continue</p>
       </div>
       
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <button
-          type="button"
+        <div 
+          className={`border rounded-lg p-6 cursor-pointer hover:border-primary ${
+            selectedRole === 'client' ? 'border-primary bg-primary/5' : 'border-gray-300'
+          }`}
           onClick={() => setSelectedRole('client')}
-          className={`border-2 rounded-xl p-6 text-left transition-all ${
-            selectedRole === 'client'
-              ? 'border-primary bg-primary/5'
-              : 'border-gray-200 hover:border-gray-300'
-          }`}
         >
-          <div className="flex items-start">
-            <div className={`w-10 h-10 rounded-full flex items-center justify-center mr-4 ${
-              selectedRole === 'client' ? 'bg-primary text-white' : 'bg-gray-100'
-            }`}>
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-              </svg>
-            </div>
-            <div>
-              <h3 className="font-medium text-lg text-gray-900">I'm a Client</h3>
-              <p className="text-gray-500 text-sm mt-1">Looking for legal representation</p>
-              
-              <ul className="mt-3 space-y-1">
-                <li className="flex items-center text-sm text-gray-600">
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-primary mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                  </svg>
-                  Post legal cases
-                </li>
-                <li className="flex items-center text-sm text-gray-600">
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-primary mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                  </svg>
-                  Review lawyer applications
-                </li>
-                <li className="flex items-center text-sm text-gray-600">
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-primary mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                  </svg>
-                  Manage your legal cases
-                </li>
-              </ul>
-            </div>
+          <div className="flex flex-col items-center text-center">
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-16 w-16 text-primary mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+            </svg>
+            <h3 className="text-xl font-semibold mb-2">Client</h3>
+            <p className="text-gray-600">I need to connect with a lawyer for legal services</p>
           </div>
-        </button>
+        </div>
         
-        <button
-          type="button"
-          onClick={() => setSelectedRole('lawyer')}
-          className={`border-2 rounded-xl p-6 text-left transition-all ${
-            selectedRole === 'lawyer'
-              ? 'border-primary bg-primary/5'
-              : 'border-gray-200 hover:border-gray-300'
+        <div 
+          className={`border rounded-lg p-6 cursor-pointer hover:border-primary ${
+            selectedRole === 'lawyer' ? 'border-primary bg-primary/5' : 'border-gray-300'
           }`}
+          onClick={() => setSelectedRole('lawyer')}
         >
-          <div className="flex items-start">
-            <div className={`w-10 h-10 rounded-full flex items-center justify-center mr-4 ${
-              selectedRole === 'lawyer' ? 'bg-primary text-white' : 'bg-gray-100'
-            }`}>
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-              </svg>
-            </div>
-            <div>
-              <h3 className="font-medium text-lg text-gray-900">I'm a Lawyer</h3>
-              <p className="text-gray-500 text-sm mt-1">Looking for clients</p>
-              
-              <ul className="mt-3 space-y-1">
-                <li className="flex items-center text-sm text-gray-600">
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-primary mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                  </svg>
-                  Browse available cases
-                </li>
-                <li className="flex items-center text-sm text-gray-600">
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-primary mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                  </svg>
-                  Apply to cases
-                </li>
-                <li className="flex items-center text-sm text-gray-600">
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-primary mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                  </svg>
-                  Get reviews & build reputation
-                </li>
-              </ul>
-            </div>
+          <div className="flex flex-col items-center text-center">
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-16 w-16 text-primary mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 6l3 1m0 0l-3 9a5.002 5.002 0 006.001 0M6 7l3 9M6 7l6-2m6 2l3-1m-3 1l-3 9a5.002 5.002 0 006.001 0M18 7l3 9m-3-9l-6-2m0-2v2m0 16V5m0 16H9m3 0h3" />
+            </svg>
+            <h3 className="text-xl font-semibold mb-2">Lawyer</h3>
+            <p className="text-gray-600">I am a legal professional looking to offer services</p>
           </div>
-        </button>
+        </div>
       </div>
       
-      <div className="flex justify-end mt-6">
-        <button
-          type="button"
-          onClick={nextStep}
+      <div className="text-center mt-8">
+        <button 
+          onClick={nextStep} 
           disabled={!selectedRole}
           className={`btn btn-primary py-2 px-6 ${!selectedRole ? 'opacity-50 cursor-not-allowed' : ''}`}
         >
@@ -130,15 +65,10 @@ const BasicInfoStep = ({
   setFormData, 
   nextStep, 
   prevStep 
-}: { 
-  formData: { firstName: string; lastName: string; email: string; password: string; };
-  setFormData: (data: any) => void;
-  nextStep: () => void;
-  prevStep: () => void;
 }) => {
   const [error, setError] = useState('')
   
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = (e) => {
     e.preventDefault()
     
     // Simple validation
@@ -257,11 +187,6 @@ const LawyerDetailsStep = ({
   setFormData, 
   nextStep, 
   prevStep 
-}: { 
-  formData: { barId: string; specializations: string[]; };
-  setFormData: (data: any) => void;
-  nextStep: () => void;
-  prevStep: () => void;
 }) => {
   const [error, setError] = useState('')
   const specializations = [
@@ -270,7 +195,7 @@ const LawyerDetailsStep = ({
     'Environmental Law', 'Real Estate Law'
   ]
   
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = (e) => {
     e.preventDefault()
     
     // Simple validation
@@ -289,7 +214,7 @@ const LawyerDetailsStep = ({
     nextStep()
   }
   
-  const toggleSpecialization = (specialization: string) => {
+  const toggleSpecialization = (specialization) => {
     if (formData.specializations.includes(specialization)) {
       setFormData({
         ...formData,
@@ -385,11 +310,6 @@ const ClientPreferencesStep = ({
   setFormData, 
   nextStep, 
   prevStep 
-}: { 
-  formData: { caseTypes: string[]; location: string; };
-  setFormData: (data: any) => void;
-  nextStep: () => void;
-  prevStep: () => void;
 }) => {
   const [error, setError] = useState('')
   const caseTypes = [
@@ -398,7 +318,7 @@ const ClientPreferencesStep = ({
     'Tax', 'Employment', 'Real Estate'
   ]
   
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = (e) => {
     e.preventDefault()
     
     // Simple validation
@@ -412,7 +332,7 @@ const ClientPreferencesStep = ({
     nextStep()
   }
   
-  const toggleCaseType = (caseType: string) => {
+  const toggleCaseType = (caseType) => {
     if (formData.caseTypes.includes(caseType)) {
       setFormData({
         ...formData,
@@ -506,85 +426,92 @@ const ConfirmationStep = ({
   prevStep, 
   handleSubmit, 
   isLoading 
-}: { 
-  formData: any;
-  role: string | null;
-  prevStep: () => void;
-  handleSubmit: () => void;
-  isLoading: boolean;
 }) => {
   return (
     <div>
       <div className="text-center mb-8">
-        <h1 className="text-3xl font-bold text-gray-800">Almost Done!</h1>
-        <p className="text-gray-600 mt-2">Please review your information</p>
+        <h2 className="text-xl font-semibold">Review Your Information</h2>
+        <p className="text-gray-600 mt-1">Please review your information before submitting</p>
       </div>
       
-      <div className="bg-gray-50 rounded-lg p-6 mb-6">
-        <h2 className="font-semibold text-lg mb-4">Account Information</h2>
-        
-        <div className="space-y-3">
-          <div className="grid grid-cols-2 gap-2">
+      <div className="bg-white rounded-lg border border-gray-200 overflow-hidden mb-6">
+        <div className="px-6 py-4 border-b border-gray-200 bg-gray-50">
+          <h3 className="text-lg font-medium">Account Information</h3>
+        </div>
+        <div className="p-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
-              <p className="text-sm font-medium text-gray-500">Name</p>
-              <p className="mt-1">{formData.firstName} {formData.lastName}</p>
+              <p className="text-sm font-medium text-gray-500">First Name</p>
+              <p className="mt-1">{formData.firstName}</p>
             </div>
-            
+            <div>
+              <p className="text-sm font-medium text-gray-500">Last Name</p>
+              <p className="mt-1">{formData.lastName}</p>
+            </div>
             <div>
               <p className="text-sm font-medium text-gray-500">Email</p>
               <p className="mt-1">{formData.email}</p>
             </div>
+            <div>
+              <p className="text-sm font-medium text-gray-500">Account Type</p>
+              <p className="mt-1 capitalize">{role}</p>
+            </div>
           </div>
-          
-          <div>
-            <p className="text-sm font-medium text-gray-500">Account Type</p>
-            <p className="mt-1 capitalize">{role}</p>
+        </div>
+      </div>
+      
+      {role === 'lawyer' && (
+        <div className="bg-white rounded-lg border border-gray-200 overflow-hidden mb-6">
+          <div className="px-6 py-4 border-b border-gray-200 bg-gray-50">
+            <h3 className="text-lg font-medium">Lawyer Information</h3>
           </div>
-          
-          {role === 'lawyer' && (
-            <>
+          <div className="p-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
-                <p className="text-sm font-medium text-gray-500">Bar Association ID</p>
+                <p className="text-sm font-medium text-gray-500">Bar ID/License Number</p>
                 <p className="mt-1">{formData.barId}</p>
               </div>
-              
               <div>
                 <p className="text-sm font-medium text-gray-500">Specializations</p>
                 <div className="mt-1 flex flex-wrap gap-1">
-                  {formData.specializations.map((spec: string) => (
+                  {formData.specializations.map((spec) => (
                     <span key={spec} className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-primary-100 text-primary">
                       {spec}
                     </span>
                   ))}
                 </div>
               </div>
-            </>
-          )}
-          
-          {role === 'client' && (
-            <>
+            </div>
+          </div>
+        </div>
+      )}
+      
+      {role === 'client' && (
+        <div className="bg-white rounded-lg border border-gray-200 overflow-hidden mb-6">
+          <div className="px-6 py-4 border-b border-gray-200 bg-gray-50">
+            <h3 className="text-lg font-medium">Client Information</h3>
+          </div>
+          <div className="p-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
                 <p className="text-sm font-medium text-gray-500">Location</p>
                 <p className="mt-1">{formData.location}</p>
               </div>
-              
-              {formData.caseTypes.length > 0 && (
-                <div>
-                  <p className="text-sm font-medium text-gray-500">Interested Case Types</p>
-                  <div className="mt-1 flex flex-wrap gap-1">
-                    {formData.caseTypes.map((type: string) => (
-                      <span key={type} className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-primary-100 text-primary">
-                        {type}
-                      </span>
-                    ))}
-                  </div>
+              <div className="md:col-span-2">
+                <p className="text-sm font-medium text-gray-500">Interested Case Types</p>
+                <div className="mt-1 flex flex-wrap gap-1">
+                  {formData.caseTypes.map((type) => (
+                    <span key={type} className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-primary-100 text-primary">
+                      {type}
+                    </span>
+                  ))}
                 </div>
-              )}
-            </>
-          )}
+              </div>
+            </div>
+          </div>
         </div>
-      </div>
-      
+      )}
+
       <div className="flex items-center justify-between">
         <button
           type="button"
@@ -618,7 +545,7 @@ const ConfirmationStep = ({
 
 const SignUpPage = () => {
   const [step, setStep] = useState(1)
-  const [role, setRole] = useState<string | null>(null)
+  const [role, setRole] = useState(null)
   const [isLoading, setIsLoading] = useState(false)
   const navigate = useNavigate()
   
