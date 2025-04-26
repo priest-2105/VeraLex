@@ -115,7 +115,16 @@ const DashboardLayout = () => {
                 key={link.path}
                 to={link.path}
                 className={`flex items-center px-4 py-3 rounded-lg transition-colors ${
-                  location.pathname === link.path || location.pathname.startsWith(link.path + '/') || location.pathname === link.dynamicpath
+                  location.pathname === link.path || 
+                  location.pathname.startsWith(link.path + '/') || 
+                  link.dynamicpath.some(path => {
+                    // Convert paths with parameters like '/client/case/:id' to regex patterns
+                    const pathPattern = path.replace(/:\w+/g, '[^/]+');
+                    const regex = new RegExp(`^${pathPattern.replace(/\//g, '\\/')}$`);
+                    console.log('Regex:', regex);
+                    console.log('Current Pathname:', location.pathname);
+                    return regex.test(location.pathname);
+                  })
                     ? 'bg-primary text-white'
                     : 'text-white hover:bg-secondary-700'
                 }`}
@@ -178,7 +187,7 @@ const DashboardLayout = () => {
           <div className="px-4 py-4 flex items-center justify-between">
             <button
               onClick={toggleSidebar}
-              className="text-gray-600"
+              className="text-gray-600  md:hidden"
             >
               <svg
                 xmlns="http://www.w3.org/2000/svg"

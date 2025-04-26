@@ -239,9 +239,12 @@ const LawyerProfilePage = () => {
               <div className="bg-white text-secondary font-medium py-2 px-4 rounded-lg text-center">
                 {lawyer.consultationFee}
               </div>
-              <button className="bg-primary hover:bg-primary/90 text-white py-2 px-4 rounded-lg font-medium transition-colors">
-                Schedule Consultation
-              </button>
+            <button 
+              onClick={() => setShowApointCaseModal(true)}
+              className="w-full bg-primary hover:bg-primary/90 text-white py-3 rounded-lg font-medium transition-colors"
+            >
+              Appoint Case
+            </button>
             </div>
           </div>
         </div>
@@ -321,17 +324,6 @@ const LawyerProfilePage = () => {
                 ))}
               </div>
               
-              <h3 className="text-lg font-medium mb-3">Consultation Options</h3>
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-6">
-                {lawyer.availability.consultationTypes.map((type, index) => (
-                  <div key={index} className="flex items-center p-3 border rounded-lg">
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-primary mr-2" viewBox="0 0 20 20" fill="currentColor">
-                      <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                    </svg>
-                    <span className="text-gray-700">{type}</span>
-                  </div>
-                ))}
-              </div>
             </div>
           )}
           
@@ -480,91 +472,6 @@ const LawyerProfilePage = () => {
             </div>
           </div>
           
-          <div className="bg-gray-50 rounded-xl shadow-md p-6">
-            <h2 className="text-lg font-semibold mb-4">Ready to Get Started?</h2>
-            <p className="text-gray-700 mb-4">
-              Schedule a consultation with {lawyer.name} to discuss your legal needs.
-            </p>
-            <div className="bg-white rounded-lg p-4 border border-gray-200 mb-4">
-              <div className="flex justify-between items-center mb-2">
-                <span className="font-medium">Consultation Fee</span>
-                <span className="text-primary font-bold">{lawyer.consultationFee}</span>
-              </div>
-              <div className="flex justify-between items-center">
-                <span className="font-medium">Next Available</span>
-                <span className="text-green-600">{lawyer.availability.nextAvailable}</span>
-              </div>
-            </div>
-            <button 
-              onClick={() => setShowApointCaseModal(true)}
-              className="w-full bg-primary hover:bg-primary/90 text-white py-3 rounded-lg font-medium transition-colors"
-            >
-              Appoint Case to Lawyer
-            </button>
-
-            {/* Appoint Case Modal */}
-            {showApointCaseModal && (
-              <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-                <motion.div 
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  className="bg-white rounded-xl shadow-xl w-full max-w-md mx-4 overflow-hidden"
-                >
-                  <div className="p-6 border-b border-gray-200">
-                    <div className="flex justify-between items-center">
-                      <h3 className="text-xl font-semibold text-gray-900">Select Case to Appoint</h3>
-                      <button 
-                        onClick={() => setShowApointCaseModal(false)}
-                        className="text-gray-400 hover:text-gray-500"
-                      >
-                        <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                        </svg>
-                      </button>
-                    </div>
-                  </div>
-                  
-                  <div className="px-6 py-4">
-                    <p className="text-gray-700 mb-4">
-                      Select one of your pending cases to appoint to {lawyer.name}.
-                    </p>
-                    
-                    {pendingCases.length > 0 ? (
-                      <div className="space-y-3 max-h-64 overflow-y-auto">
-                        {pendingCases.map(caseItem => (
-                          <div 
-                            key={caseItem.id}
-                            className="border border-gray-200 rounded-lg p-4 hover:bg-gray-50 cursor-pointer"
-                            onClick={() => handleAppointCase(caseItem.id)}
-                          >
-                            <h4 className="font-medium text-gray-900">{caseItem.title}</h4>
-                            <p className="text-sm text-gray-500 mt-1">Created on {new Date(caseItem.createdAt).toLocaleDateString()}</p>
-                          </div>
-                        ))}
-                      </div>
-                    ) : (
-                      <div className="text-center py-6">
-                        <svg xmlns="http://www.w3.org/2000/svg" className="h-12 w-12 mx-auto text-gray-400 mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                        </svg>
-                        <p className="text-gray-700 mb-2">No pending cases found</p>
-                        <p className="text-gray-500 text-sm">Create a new case first to appoint this lawyer.</p>
-                      </div>
-                    )}
-                  </div>
-                  
-                  <div className="bg-gray-50 px-6 py-4 border-t border-gray-200 flex justify-end">
-                    <button
-                      onClick={() => setShowApointCaseModal(false)}
-                      className="btn btn-outline mr-2"
-                    >
-                      Cancel
-                    </button>
-                  </div>
-                </motion.div>
-              </div>
-            )}
-          </div>
           
           <div className="bg-secondary/5 rounded-xl p-6 border border-secondary/20">
             <h2 className="text-lg font-semibold mb-2">Have Questions?</h2>
