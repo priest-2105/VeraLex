@@ -1,11 +1,14 @@
 import { useState, useEffect } from 'react'
 import { useParams } from 'react-router-dom'
+import { motion } from 'framer-motion'
 
 const LawyerProfilePage = () => {
   const { lawyerId } = useParams()
   const [lawyer, setLawyer] = useState(null)
   const [loading, setLoading] = useState(true)
   const [activeTab, setActiveTab] = useState('about')
+  const [showApointCaseModal, setShowApointCaseModal] = useState(false)
+  const [pendingCases, setPendingCases] = useState([])
   
   // Mock data - in a real app, fetch from API
   useEffect(() => {
@@ -87,6 +90,41 @@ const LawyerProfilePage = () => {
       setLoading(false)
     }, 800)
   }, [lawyerId])
+  
+  // Mock data for pending cases
+  useEffect(() => {
+    // Simulate API call to get client's pending cases
+    setTimeout(() => {
+      setPendingCases([
+        {
+          id: 'case-001',
+          title: 'Contract Dispute with Tech Vendor',
+          createdAt: '2023-06-10',
+          status: 'pending'
+        },
+        {
+          id: 'case-002',
+          title: 'Intellectual Property Infringement',
+          createdAt: '2023-06-15',
+          status: 'pending'
+        },
+        {
+          id: 'case-003',
+          title: 'Employment Agreement Review',
+          createdAt: '2023-06-20',
+          status: 'pending'
+        }
+      ])
+    }, 1200)
+  }, [])
+
+  const handleAppointCase = (caseId) => {
+    // In a real app, make API call to appoint lawyer to case
+    console.log(`Appointing lawyer ${lawyerId} to case ${caseId}`)
+    // Close modal after appointment
+    setShowApointCaseModal(false)
+    // Show success message or redirect
+  }
   
   if (loading) {
     return (
@@ -457,9 +495,75 @@ const LawyerProfilePage = () => {
                 <span className="text-green-600">{lawyer.availability.nextAvailable}</span>
               </div>
             </div>
-            <button className="w-full bg-primary hover:bg-primary/90 text-white py-3 rounded-lg font-medium transition-colors">
-              Schedule Consultation
+            <button 
+              onClick={() => setShowApointCaseModal(true)}
+              className="w-full bg-primary hover:bg-primary/90 text-white py-3 rounded-lg font-medium transition-colors"
+            >
+              Appoint Case to Lawyer
             </button>
+
+            {/* Appoint Case Modal */}
+            {showApointCaseModal && (
+              <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+                <motion.div 
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="bg-white rounded-xl shadow-xl w-full max-w-md mx-4 overflow-hidden"
+                >
+                  <div className="p-6 border-b border-gray-200">
+                    <div className="flex justify-between items-center">
+                      <h3 className="text-xl font-semibold text-gray-900">Select Case to Appoint</h3>
+                      <button 
+                        onClick={() => setShowApointCaseModal(false)}
+                        className="text-gray-400 hover:text-gray-500"
+                      >
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                      </button>
+                    </div>
+                  </div>
+                  
+                  <div className="px-6 py-4">
+                    <p className="text-gray-700 mb-4">
+                      Select one of your pending cases to appoint to {lawyer.name}.
+                    </p>
+                    
+                    {pendingCases.length > 0 ? (
+                      <div className="space-y-3 max-h-64 overflow-y-auto">
+                        {pendingCases.map(caseItem => (
+                          <div 
+                            key={caseItem.id}
+                            className="border border-gray-200 rounded-lg p-4 hover:bg-gray-50 cursor-pointer"
+                            onClick={() => handleAppointCase(caseItem.id)}
+                          >
+                            <h4 className="font-medium text-gray-900">{caseItem.title}</h4>
+                            <p className="text-sm text-gray-500 mt-1">Created on {new Date(caseItem.createdAt).toLocaleDateString()}</p>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="text-center py-6">
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-12 w-12 mx-auto text-gray-400 mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                        </svg>
+                        <p className="text-gray-700 mb-2">No pending cases found</p>
+                        <p className="text-gray-500 text-sm">Create a new case first to appoint this lawyer.</p>
+                      </div>
+                    )}
+                  </div>
+                  
+                  <div className="bg-gray-50 px-6 py-4 border-t border-gray-200 flex justify-end">
+                    <button
+                      onClick={() => setShowApointCaseModal(false)}
+                      className="btn btn-outline mr-2"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </motion.div>
+              </div>
+            )}
           </div>
           
           <div className="bg-secondary/5 rounded-xl p-6 border border-secondary/20">
