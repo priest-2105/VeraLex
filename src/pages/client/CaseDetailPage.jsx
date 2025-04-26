@@ -120,6 +120,8 @@ const CaseDetailPage = () => {
   const [caseData, setCaseData] = useState(null)
   const [isLoading, setIsLoading] = useState(true)
   const [newMessage, setNewMessage] = useState('')
+  const [isApplyModalOpen, setIsApplyModalOpen] = useState(false)
+  const [applicationMessage, setApplicationMessage] = useState('')
 
   // Mock current user data (replace with actual auth context later)
   const currentUser = {
@@ -185,6 +187,14 @@ const CaseDetailPage = () => {
     setActiveTab('overview')
   }
 
+  const handleApplySubmit = () => {
+    console.log('Sending application message:', applicationMessage)
+    // TODO: Implement API call to submit application
+    // Close modal after submission
+    setIsApplyModalOpen(false)
+    setApplicationMessage('')
+  }
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
@@ -231,10 +241,20 @@ const CaseDetailPage = () => {
           </div>
           
           <div className="mt-4 md:mt-0 flex space-x-2">
-            <button className="btn btn-outline">
-              Edit Case
-            </button>
-            {caseData.status === 'in_progress' && (
+            {currentUser.role === 'lawyer' && !caseData.lawyer && (
+              <button 
+                onClick={() => setIsApplyModalOpen(true)} 
+                className="btn btn-primary"
+              >
+                Apply to Case
+              </button>
+            )}
+            {currentUser.role === 'client' && (
+              <button className="btn btn-outline">
+                Edit Case
+              </button>
+            )}
+            {caseData.status === 'in_progress' && currentUser.role === 'client' && (
               <button className="btn btn-primary">
                 Close Case
               </button>
@@ -631,6 +651,46 @@ const CaseDetailPage = () => {
           </motion.div>
         )}
       </div>
+
+      {/* Apply to Case Modal */}
+      {isApplyModalOpen && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg shadow-xl p-6 w-full max-w-md">
+            <h2 className="text-xl font-semibold mb-4">Apply to Case: {caseData.title}</h2>
+            <form onSubmit={(e) => { e.preventDefault(); handleApplySubmit(); }}>
+              <div className="mb-4">
+                <label htmlFor="applicationMessage" className="block text-sm font-medium text-gray-700 mb-1">
+                  Your Message / Cover Letter
+                </label>
+                <textarea
+                  id="applicationMessage"
+                  rows="5"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary focus:border-primary"
+                  placeholder="Explain why you're a good fit for this case..."
+                  value={applicationMessage}
+                  onChange={(e) => setApplicationMessage(e.target.value)}
+                  required
+                ></textarea>
+              </div>
+              <div className="flex justify-end space-x-2">
+                <button 
+                  type="button" 
+                  onClick={() => setIsApplyModalOpen(false)} 
+                  className="btn btn-outline"
+                >
+                  Cancel
+                </button>
+                <button 
+                  type="submit" 
+                  className="btn btn-primary"
+                >
+                  Submit Application
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
