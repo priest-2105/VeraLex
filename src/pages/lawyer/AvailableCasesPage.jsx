@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { Link } from 'react-router-dom'
 import { motion } from 'framer-motion'
 
 // Mock data for available cases
@@ -231,7 +232,12 @@ const AvailableCasesPage = () => {
                 </div>
                 
                 <div className="flex flex-col justify-between md:w-40">
-                  <button className="btn btn-primary w-full mb-2">Apply Now</button>
+                  <Link 
+                    to={`/lawyer/case/${caseItem.id}`} 
+                    className="btn btn-primary w-full mb-2 text-center"
+                  >
+                    View Details
+                  </Link>
                   <button className="btn btn-outline w-full">Save</button>
                 </div>
               </div>

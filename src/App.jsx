@@ -1,5 +1,5 @@
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom'
-import React, { lazy, Suspense } from 'react'
+import { lazy, Suspense } from 'react'
 import './App.css'
 
 // Layouts
