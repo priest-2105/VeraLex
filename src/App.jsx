@@ -44,7 +44,7 @@ const LoadingFallback = () => (
 function App() {
   
   const isAuthenticated = true
-  const userRole = 'client'
+  const userRole = 'lawyer'
 
   return (
     <Router>
@@ -80,7 +80,7 @@ function App() {
             <Route path="find-lawyer" element={<FindLawyerPage />} />
             <Route path="case/:id" element={<CaseDetailPage />} />
             <Route path="profile" element={<ProfilePage />} />
-            <Route path={`/${userRole}lawyer/:lawyerId`} element={<LawyerProfilePage />} />
+            <Route path="lawyer/:lawyerId" element={<LawyerProfilePage />} />
           </Route>
 
           {/* Lawyer Routes - Protected */}
