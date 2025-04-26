@@ -12,7 +12,7 @@ const DashboardLayout = () => {
   
   // Mock user data - this would come from auth context in a real app
   const mockUser = {
-    role: location.pathname.includes('/lawyer') ? 'lawyer' : 'client',
+    role: location.pathname.startsWith('/lawyer/') ? 'lawyer' : 'client',
     name: 'Jane Doe',
     email: 'jane@example.com',
     avatar: 'https://randomuser.me/api/portraits/women/42.jpg'

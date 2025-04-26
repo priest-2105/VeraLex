@@ -374,7 +374,7 @@ const CaseDetailPage = () => {
                         >
                           Send Message
                         </button>
-                        <Link to={`/lawyer/${caseData.lawyer.id}`} className="w-full btn btn-sm btn-outline">
+                        <Link to={`/client/lawyer/${caseData.lawyer.id}`} className="w-full btn btn-sm btn-outline">
                           View Profile
                         </Link>
                       </div>
