@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { useParams } from 'react-router-dom'
 import { motion } from 'framer-motion'
 
+
 const LawyerProfilePage = () => {
   const { lawyerId } = useParams()
   const [lawyer, setLawyer] = useState(null)
@@ -196,7 +197,7 @@ const LawyerProfilePage = () => {
                 <div className="text-center">
                   <div className="flex items-center justify-center md:justify-start">
                     <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2 text-primary" viewBox="0 0 20 20" fill="currentColor">
-                      <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clipRule="evenodd" />
+                      <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 11-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clipRule="evenodd" />
                     </svg>
                     <span className="font-semibold">{lawyer.experience}</span>
                   </div>
@@ -233,18 +234,6 @@ const LawyerProfilePage = () => {
                   <p className="text-xs mt-1 text-white/80">Available In</p>
                 </div>
               </div>
-            </div>
-            
-            <div className="mt-6 md:mt-0 flex flex-col gap-3">
-              <div className="bg-white text-secondary font-medium py-2 px-4 rounded-lg text-center">
-                {lawyer.consultationFee}
-              </div>
-            <button 
-              onClick={() => setShowApointCaseModal(true)}
-              className="w-full bg-primary hover:bg-primary/90 text-white py-3 rounded-lg font-medium transition-colors"
-            >
-              Appoint Case
-            </button>
             </div>
           </div>
         </div>
