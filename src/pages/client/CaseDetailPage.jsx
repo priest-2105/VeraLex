@@ -7,7 +7,7 @@ const mockCase = {
   id: 'case-123',
   title: 'Contract Dispute with Software Vendor',
   description: 'We entered into a software development agreement with TechCorp in January 2023. They have failed to deliver key features specified in our contract and missed multiple deadlines. We need legal representation to review our options for terminating the contract and potentially seeking damages for delays and incomplete work.',
-  status: 'in_progress',
+  status: 'pending',
   type: 'Corporate Law',
   role: 'plaintiff',
   budget: 5000,
@@ -19,19 +19,51 @@ const mockCase = {
     { name: 'Email_Correspondence.zip', size: '1.8 MB', uploadedAt: '2023-05-15' },
     { name: 'Development_Timeline.xlsx', size: '0.5 MB', uploadedAt: '2023-05-20' }
   ],
-  lawyer: {
-    id: 'lawyer-1',
-    name: 'Sarah Johnson',
-    photo: 'https://randomuser.me/api/portraits/women/44.jpg',
-    specializations: ['Corporate Law', 'Contract Law'],
-    rating: 4.8,
-    reviewCount: 124,
-    yearsOfExperience: 12,
-    location: 'New York, NY',
-    email: 'sarah.johnson@example.com',
-    phone: '(212) 555-1234',
-    assignedAt: '2023-05-20'
-  },
+  lawyer: null,
+  lawyerApplicants: [
+    {
+      id: 'lawyer-1',
+      name: 'Sarah Johnson',
+      photo: 'https://randomuser.me/api/portraits/women/44.jpg',
+      specializations: ['Corporate Law', 'Contract Law'],
+      rating: 4.8,
+      reviewCount: 124,
+      yearsOfExperience: 12,
+      location: 'New York, NY',
+      appliedAt: '2023-05-18',
+      proposedFee: '$3,500',
+      estimatedTime: '3 weeks',
+      coverLetter: 'I have extensive experience with contract disputes in the software industry and can help negotiate a resolution or pursue litigation if necessary. My background in technology law gives me insight into typical development contracts and timelines.'
+    },
+    {
+      id: 'lawyer-2',
+      name: 'Michael Chen',
+      photo: 'https://randomuser.me/api/portraits/men/22.jpg',
+      specializations: ['Intellectual Property', 'Contract Law'],
+      rating: 4.9,
+      reviewCount: 87,
+      yearsOfExperience: 8,
+      location: 'San Francisco, CA',
+      appliedAt: '2023-05-19',
+      proposedFee: '$3,800',
+      estimatedTime: '2-4 weeks',
+      coverLetter: 'Having worked with numerous tech companies on contract disputes, I understand the technical aspects involved. I can help review your agreement and develop a strategy for resolution, whether through negotiation or legal action.'
+    },
+    {
+      id: 'lawyer-3',
+      name: 'Jennifer Williams',
+      photo: 'https://randomuser.me/api/portraits/women/67.jpg',
+      specializations: ['Corporate Law', 'Business Litigation'],
+      rating: 4.7,
+      reviewCount: 92,
+      yearsOfExperience: 15,
+      location: 'Chicago, IL',
+      appliedAt: '2023-05-20',
+      proposedFee: '$4,200',
+      estimatedTime: '4 weeks',
+      coverLetter: 'My litigation experience would be valuable in this dispute. I can help analyze the contract, document the failures to perform, and prepare for potential litigation if needed, while also exploring settlement options.'
+    }
+  ],
   timeline: [
     { date: '2023-05-15', action: 'Case created', actor: 'Client' },
     { date: '2023-05-18', action: 'Lawyer application received', actor: 'Sarah Johnson' },
@@ -128,6 +160,25 @@ const CaseDetailPage = () => {
     setNewMessage('')
   }
 
+  const handleAppointLawyer = (lawyerId) => {
+    // In real app, this would make an API call to appoint lawyer
+    console.log(`Appointing lawyer ${lawyerId} to case ${id}`)
+    
+    // For demo purposes, update the state
+    setCaseData(prev => {
+      const selectedLawyer = prev.lawyerApplicants.find(lawyer => lawyer.id === lawyerId)
+      return {
+        ...prev,
+        lawyer: selectedLawyer,
+        status: 'in_progress',
+        lawyerApplicants: []
+      }
+    })
+    
+    // Switch to overview tab
+    setActiveTab('overview')
+  }
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
@@ -200,6 +251,21 @@ const CaseDetailPage = () => {
             >
               Overview
             </button>
+            {caseData.status === 'pending' && caseData.lawyerApplicants?.length > 0 && (
+              <button
+                onClick={() => setActiveTab('applicants')}
+                className={`px-6 py-4 text-sm font-medium border-b-2 ${
+                  activeTab === 'applicants'
+                    ? 'border-primary text-primary'
+                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                }`}
+              >
+                Applicants
+                <span className="ml-2 rounded-full bg-primary/10 text-primary text-xs px-2 py-0.5">
+                  {caseData.lawyerApplicants.length}
+                </span>
+              </button>
+            )}
             <button
               onClick={() => setActiveTab('documents')}
               className={`px-6 py-4 text-sm font-medium border-b-2 ${
@@ -547,6 +613,113 @@ const CaseDetailPage = () => {
                     <p className="text-sm text-gray-600">Case was created and posted to the marketplace</p>
                   </div>
                 </div>
+              </div>
+            </div>
+          )}
+
+          {/* Applicants Tab */}
+          {activeTab === 'applicants' && (
+            <div>
+              <h2 className="text-lg font-semibold mb-4">Lawyer Applicants</h2>
+              <p className="text-gray-700 mb-6">
+                The following lawyers have applied to handle your case. Review their profiles and proposals to select the best match for your legal needs.
+              </p>
+              
+              <div className="space-y-6">
+                {caseData.lawyerApplicants.map((lawyer) => (
+                  <motion.div 
+                    key={lawyer.id}
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="bg-white border border-gray-200 rounded-lg overflow-hidden"
+                  >
+                    <div className="p-6">
+                      <div className="flex flex-col md:flex-row md:items-start gap-4">
+                        <div className="flex-shrink-0">
+                          <img 
+                            src={lawyer.photo} 
+                            alt={lawyer.name} 
+                            className="w-20 h-20 md:w-24 md:h-24 rounded-full object-cover"
+                          />
+                        </div>
+                        
+                        <div className="flex-1">
+                          <div className="flex flex-wrap justify-between items-start">
+                            <div>
+                              <h3 className="text-lg font-medium text-gray-900">{lawyer.name}</h3>
+                              <p className="text-gray-600">{lawyer.location}</p>
+                              
+                              <div className="flex items-center mt-1 mb-2">
+                                <div className="flex">
+                                  {[...Array(5)].map((_, i) => (
+                                    <svg 
+                                      key={i}
+                                      xmlns="http://www.w3.org/2000/svg" 
+                                      className={`h-4 w-4 ${i < Math.floor(lawyer.rating) ? 'text-yellow-400' : 'text-gray-300'}`}
+                                      viewBox="0 0 20 20"
+                                      fill="currentColor"
+                                    >
+                                      <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+                                    </svg>
+                                  ))}
+                                </div>
+                                <span className="ml-1 text-sm text-gray-600">{lawyer.rating}</span>
+                                <span className="mx-1.5 text-gray-500">·</span>
+                                <span className="text-sm text-gray-600">{lawyer.reviewCount} reviews</span>
+                              </div>
+                              
+                              <div className="flex flex-wrap gap-2 mb-4">
+                                {lawyer.specializations.map((spec, index) => (
+                                  <span key={index} className="px-2 py-1 bg-blue-50 text-blue-700 text-xs font-medium rounded">
+                                    {spec}
+                                  </span>
+                                ))}
+                              </div>
+                              
+                              <div className="text-sm text-gray-700 mb-4">
+                                <p className="mb-2">{lawyer.coverLetter}</p>
+                              </div>
+                              
+                              <div className="grid grid-cols-2 gap-4 mb-4">
+                                <div>
+                                  <span className="text-sm font-medium text-gray-500">Proposed Fee</span>
+                                  <p className="text-primary font-bold">{lawyer.proposedFee}</p>
+                                </div>
+                                <div>
+                                  <span className="text-sm font-medium text-gray-500">Estimated Time</span>
+                                  <p className="text-gray-900">{lawyer.estimatedTime}</p>
+                                </div>
+                                <div>
+                                  <span className="text-sm font-medium text-gray-500">Experience</span>
+                                  <p className="text-gray-900">{lawyer.yearsOfExperience} years</p>
+                                </div>
+                                <div>
+                                  <span className="text-sm font-medium text-gray-500">Applied On</span>
+                                  <p className="text-gray-900">{formatDate(lawyer.appliedAt)}</p>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                          
+                          <div className="flex gap-3 mt-4">
+                            <Link 
+                              to={`/client/lawyer/${lawyer.id}`} 
+                              className="btn btn-sm btn-outline"
+                            >
+                              View Full Profile
+                            </Link>
+                            <button 
+                              onClick={() => handleAppointLawyer(lawyer.id)}
+                              className="btn btn-sm btn-primary"
+                            >
+                              Appoint Lawyer
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </motion.div>
+                ))}
               </div>
             </div>
           )}
