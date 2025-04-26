@@ -393,7 +393,7 @@ const FindLawyerPage = () => {
                           <span className="font-medium">${lawyer.hourlyRate}/hr</span>
                         </div>
                         <p className="text-sm text-gray-600 mb-4 line-clamp-2">{lawyer.bio}</p>
-                        <Link to={`/lawyer/${lawyer.id}`} className="btn btn-sm btn-primary w-full">
+                        <Link to={`/client/lawyer/${lawyer.id}`} className="btn btn-sm btn-primary w-full">
                           View Profile
                         </Link>
                       </div>
@@ -458,7 +458,7 @@ const FindLawyerPage = () => {
                             </div>
                             <div className="flex items-center space-x-3">
                               <span className="font-medium">${lawyer.hourlyRate}/hr</span>
-                              <Link to={`/lawyer/${lawyer.id}`} className="btn btn-sm btn-primary">
+                              <Link to={`/client/lawyer/${lawyer.id}`} className="btn btn-sm btn-primary">
                                 View Profile
                               </Link>
                             </div>
