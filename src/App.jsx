@@ -28,6 +28,7 @@ const LawyerDashboardPage = lazy(() => import('./pages/lawyer/DashboardPage'))
 const AvailableCasesPage = lazy(() => import('./pages/lawyer/AvailableCasesPage'))
 const MyApplicationsPage = lazy(() => import('./pages/lawyer/MyApplicationsPage'))
 const MyClientsPage = lazy(() => import('./pages/lawyer/MyClientsPage'))
+const LawyerMyCasesPage = lazy(() => import('./pages/lawyer/MyCasesPage'))
 
 // Shared Pages
 const ProfilePage = lazy(() => import('./pages/shared/ProfilePage'))
@@ -91,6 +92,7 @@ function App() {
           }>
             <Route path="dashboard" element={<LawyerDashboardPage />} />
             <Route path="available-cases" element={<AvailableCasesPage />} />
+            <Route path="my-cases" element={<LawyerMyCasesPage />} />
             <Route path="my-applications" element={<MyApplicationsPage />} />
             <Route path="my-clients" element={<MyClientsPage />} />
             <Route path="case/:id" element={<CaseDetailPage />} />
