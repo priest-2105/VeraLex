@@ -31,6 +31,7 @@ const MyClientsPage = lazy(() => import('./pages/lawyer/MyClientsPage'))
 
 // Shared Pages
 const ProfilePage = lazy(() => import('./pages/shared/ProfilePage'))
+const LawyerProfilePage = lazy(() => import('./pages/shared/LawyerProfilePage'))
 const CaseDetailPage = lazy(() => import('./pages/client/CaseDetailPage'))
 
 // Loading Component
@@ -79,6 +80,7 @@ function App() {
             <Route path="find-lawyer" element={<FindLawyerPage />} />
             <Route path="case/:id" element={<CaseDetailPage />} />
             <Route path="profile" element={<ProfilePage />} />
+            <Route path={`/${userRole}lawyer/:lawyerId`} element={<LawyerProfilePage />} />
           </Route>
 
           {/* Lawyer Routes - Protected */}
@@ -93,6 +95,7 @@ function App() {
             <Route path="my-clients" element={<MyClientsPage />} />
             <Route path="case/:id" element={<CaseDetailPage />} />
             <Route path="profile" element={<ProfilePage />} />
+            <Route path=":lawyerId" element={<LawyerProfilePage />} />
           </Route>
 
           {/* Catch-all redirect to home */}
