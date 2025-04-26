@@ -42,8 +42,8 @@ const LoadingFallback = () => (
 
 function App() {
   
-  const isAuthenticated = false
-  const userRole = null 
+  const isAuthenticated = true
+  const userRole = 'client'
 
   return (
     <Router>

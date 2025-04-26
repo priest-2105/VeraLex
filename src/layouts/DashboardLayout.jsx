@@ -52,9 +52,13 @@ const DashboardLayout = () => {
   const navLinks = getNavLinks()
   
   return (
-    <div className="min-h-screen bg-slate-50">
-      {/* Sidebar */}
-      <aside className={`bg-secondary text-white fixed inset-y-0 left-0 z-20 w-64 transform transition-transform duration-300 ease-in-out ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'} lg:translate-x-0 lg:static lg:inset-auto`}>
+    <div className="flex h-screen overflow-hidden bg-slate-50">
+      {/* Sidebar - Fixed */}
+      <aside 
+        className={`fixed lg:static h-full z-30 bg-secondary text-white w-64 transform transition-transform duration-300 ease-in-out ${
+          isSidebarOpen ? 'translate-x-0' : '-translate-x-full'
+        } lg:translate-x-0`}
+      >
         <div className="flex flex-col h-full">
           {/* Logo */}
           <div className="p-4 border-b border-secondary-700">
@@ -63,7 +67,7 @@ const DashboardLayout = () => {
             </Link>
           </div>
           
-          {/* Nav Links */}
+          {/* Nav Links - scrollable */}
           <nav className="flex-grow p-4 space-y-1 overflow-y-auto">
             {navLinks.map((link) => (
               <Link
@@ -126,10 +130,10 @@ const DashboardLayout = () => {
         </div>
       </aside>
 
-      {/* Main Content */}
-      <div className={`flex flex-col min-h-screen transition-all duration-300 ${isSidebarOpen ? 'lg:ml-64' : ''}`}>
-        {/* Header */}
-        <header className="bg-white shadow-sm">
+      {/* Main Content Area */}
+      <div className="flex flex-col flex-1 h-screen overflow-hidden">
+        {/* Header - Fixed */}
+        <header className="bg-white shadow-sm sticky top-0 z-20">
           <div className="px-4 py-4 flex items-center justify-between">
             <button
               onClick={toggleSidebar}
@@ -313,8 +317,8 @@ const DashboardLayout = () => {
           </div>
         </header>
         
-        {/* Main Content */}
-        <main className="flex-grow p-6">
+        {/* Main Content - Scrollable */}
+        <main className="flex-1 overflow-y-auto p-6">
           <Outlet />
         </main>
       </div>
