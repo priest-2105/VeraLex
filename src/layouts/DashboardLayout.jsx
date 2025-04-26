@@ -1,5 +1,5 @@
 import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { motion } from 'framer-motion'
 
 const DashboardLayout = () => {
@@ -8,6 +8,7 @@ const DashboardLayout = () => {
   const [notificationsOpen, setNotificationsOpen] = useState(false)
   const location = useLocation()
   const navigate = useNavigate()
+  const sidebarRef = useRef(null)
   
   // Mock user data - this would come from auth context in a real app
   const mockUser = {
@@ -27,6 +28,23 @@ const DashboardLayout = () => {
     // In a real app, you would clear auth state/tokens here
     navigate('/auth/signin')
   }
+
+  // Handle clicks outside the sidebar to close it on mobile
+  useEffect(() => {
+    function handleClickOutside(event) {
+      if (sidebarRef.current && 
+          !sidebarRef.current.contains(event.target) && 
+          isSidebarOpen && 
+          window.innerWidth < 1024) {
+        setIsSidebarOpen(false)
+      }
+    }
+
+    document.addEventListener("mousedown", handleClickOutside)
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside)
+    }
+  }, [isSidebarOpen])
   
   // Generate nav links based on user role
   const getNavLinks = () => {
@@ -53,18 +71,41 @@ const DashboardLayout = () => {
   
   return (
     <div className="flex h-screen overflow-hidden bg-slate-50">
+      {/* Mobile Backdrop - Only visible when sidebar is open on mobile */}
+      {isSidebarOpen && (
+        <div 
+          className="fixed inset-0 bg-[#00000021] bg-opacity-50 z-20 lg:hidden" 
+          onClick={() => setIsSidebarOpen(false)}
+        ></div>
+      )}
+      
       {/* Sidebar - Fixed */}
       <aside 
+        ref={sidebarRef}
         className={`fixed lg:static h-full z-30 bg-secondary text-white w-64 transform transition-transform duration-300 ease-in-out ${
           isSidebarOpen ? 'translate-x-0' : '-translate-x-full'
         } lg:translate-x-0`}
       >
         <div className="flex flex-col h-full">
-          {/* Logo */}
-          <div className="p-4 border-b border-secondary-700">
-            <Link to="/" className="flex items-center">
+          {/* Logo with Close Button for Mobile */}
+          <div className="p-4 border-b border-secondary-700 flex items-center justify-between">
+            <Link to="/" className="flex items-center w-fit">
               <span className="font-bold text-xl">Vera<span className="text-primary">Lex</span></span>
             </Link>
+            <button 
+              onClick={toggleSidebar}
+              className="md:hidden text-white hover:text-primary transition-colors"
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                className="h-6 w-6"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
           </div>
           
           {/* Nav Links - scrollable */}
@@ -101,7 +142,7 @@ const DashboardLayout = () => {
                 alt="User avatar"
                 className="w-10 h-10 rounded-full mr-3"
               />
-              <div>
+              <div className='text-start mr-auto'>
                 <div className="font-medium">{mockUser.name}</div>
                 <div className="text-xs text-gray-300 capitalize">{mockUser.role}</div>
               </div>
@@ -137,7 +178,7 @@ const DashboardLayout = () => {
           <div className="px-4 py-4 flex items-center justify-between">
             <button
               onClick={toggleSidebar}
-              className="text-gray-600 lg:hidden"
+              className="text-gray-600"
             >
               <svg
                 xmlns="http://www.w3.org/2000/svg"
@@ -155,7 +196,7 @@ const DashboardLayout = () => {
             </button>
             
             {/* Header Right */}
-            <div className="flex items-center space-x-4">
+            <div className="ml-auto md:space-x-5 space-x-2 flex items-center">
               {/* Notifications */}
               <div className="relative">
                 <button
