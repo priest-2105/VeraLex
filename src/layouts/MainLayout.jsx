@@ -1,11 +1,17 @@
-import { Outlet } from 'react-router-dom'
+import { Outlet, Link } from 'react-router-dom'
 import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
-import { Link } from 'react-router-dom'
+import { useSelector } from 'react-redux'
+import { selectCurrentUser } from '../store/authSlice'
 
 const MainLayout = () => {
   const [isScrolled, setIsScrolled] = useState(false)
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+  
+  // Get user data from Redux
+  const currentUser = useSelector(selectCurrentUser)
+  const isAuthenticated = !!currentUser
+  const userRole = currentUser?.profile?.role
 
   useEffect(() => {
     const handleScroll = () => {
@@ -16,6 +22,9 @@ const MainLayout = () => {
     return () => window.removeEventListener('scroll', handleScroll)
   }, [])
 
+  // Close mobile menu on navigation
+  const closeMobileMenu = () => setMobileMenuOpen(false)
+
   return (
     <div className="min-h-screen flex flex-col">
       {/* Header */}
@@ -25,21 +34,34 @@ const MainLayout = () => {
         <div className="container mx-auto px-4 flex justify-between items-center">
           {/* Logo */}
           <Link to="/" className="flex items-center">
-            <span className="text-primary font-bold text-2xl">Vera<span className="text-secondary">Lex</span></span>
+            <span className={`text-2xl font-bold ${isScrolled ? 'text-primary' : 'text-secondary'}`}>
+              Vera<span className={`${isScrolled ? 'text-secondary' : 'text-primary'}`}>Lex</span>
+            </span>
           </Link>
 
           {/* Desktop Navigation */}
           <nav className="hidden md:flex items-center space-x-8">
-            <Link to="/" className="text-secondary hover:text-primary transition-colors">Home</Link>
-            <Link to="/about" className="text-secondary hover:text-primary transition-colors">About</Link>
-            <Link to="/contact" className="text-secondary hover:text-primary transition-colors">Contact</Link>
-            <Link to="/auth/signin" className="btn btn-outline">Sign In</Link>
-            <Link to="/auth/signup" className="btn btn-primary">Get Started</Link>
+            <Link to="/" className={`${isScrolled ? 'text-secondary' : ''} hover:text-primary transition-colors`}>Home</Link>
+            <Link to="/about" className={`${isScrolled ? 'text-secondary' : ''} hover:text-primary transition-colors`}>About</Link>
+            <Link to="/contact" className={`${isScrolled ? 'text-secondary' : ''} hover:text-primary transition-colors`}>Contact</Link>
+            {isAuthenticated ? (
+              <Link 
+                to={`/${userRole}/dashboard`}
+                className={`btn ${isScrolled ? 'btn-primary' : 'btn-secondary'}`}
+              >
+                Dashboard
+              </Link>
+            ) : (
+              <>
+                <Link to="/auth/signin" className={`btn ${isScrolled ? 'btn-outline-secondary' : 'btn-outline-white'}`}>Sign In</Link>
+                <Link to="/auth/signup" className={`btn ${isScrolled ? 'btn-primary' : 'btn-secondary'}`}>Get Started</Link>
+              </>
+            )}
           </nav>
 
           {/* Mobile Menu Button */}
           <button 
-            className="md:hidden text-secondary"
+            className={`md:hidden ${isScrolled ? 'text-secondary' : 'text-white'}`}
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
           >
             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" className="w-6 h-6">
@@ -58,21 +80,33 @@ const MainLayout = () => {
             initial={{ opacity: 0, y: -20 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -20 }}
-            className="md:hidden bg-white border-t mt-2"
+            className="md:hidden bg-white border-t mt-2 shadow-lg"
           >
             <div className="container mx-auto px-4 py-3 flex flex-col space-y-3">
-              <Link to="/" className="text-secondary hover:text-primary py-2 transition-colors">Home</Link>
-              <Link to="/about" className="text-secondary hover:text-primary py-2 transition-colors">About</Link>
-              <Link to="/contact" className="text-secondary hover:text-primary py-2 transition-colors">Contact</Link>
-              <Link to="/auth/signin" className="btn btn-outline w-full text-center py-2">Sign In</Link>
-              <Link to="/auth/signup" className="btn btn-primary w-full text-center py-2">Get Started</Link>
+              <Link onClick={closeMobileMenu} to="/" className="text-secondary hover:text-primary py-2 transition-colors">Home</Link>
+              <Link onClick={closeMobileMenu} to="/about" className="text-secondary hover:text-primary py-2 transition-colors">About</Link>
+              <Link onClick={closeMobileMenu} to="/contact" className="text-secondary hover:text-primary py-2 transition-colors">Contact</Link>
+              {isAuthenticated ? (
+                <Link 
+                  onClick={closeMobileMenu} 
+                  to={`/${userRole}/dashboard`}
+                  className="btn btn-primary w-full text-center py-2"
+                >
+                  Dashboard
+                </Link>
+              ) : (
+                <>
+                  <Link onClick={closeMobileMenu} to="/auth/signin" className="btn btn-outline w-full text-center py-2">Sign In</Link>
+                  <Link onClick={closeMobileMenu} to="/auth/signup" className="btn btn-primary w-full text-center py-2">Get Started</Link>
+                </>
+              )}
             </div>
           </motion.div>
         )}
       </header>
 
       {/* Main Content */}
-      <main className="flex-grow pt-24">
+      <main className="flex-grow pt-20 md:pt-24">
         <Outlet />
       </main>
 

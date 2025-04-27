@@ -7,7 +7,7 @@ const mockCase = {
   id: 'case-123',
   title: 'Contract Dispute with Software Vendor',
   description: 'We entered into a software development agreement with TechCorp in January 2023. They have failed to deliver key features specified in our contract and missed multiple deadlines. We need legal representation to review our options for terminating the contract and potentially seeking damages for delays and incomplete work.',
-  status: 'in_progress',
+  status: 'pending',
   type: 'Corporate Law',
   role: 'plaintiff',
   budget: 5000,
@@ -19,19 +19,51 @@ const mockCase = {
     { name: 'Email_Correspondence.zip', size: '1.8 MB', uploadedAt: '2023-05-15' },
     { name: 'Development_Timeline.xlsx', size: '0.5 MB', uploadedAt: '2023-05-20' }
   ],
-  lawyer: {
-    id: 'lawyer-1',
-    name: 'Sarah Johnson',
-    photo: 'https://randomuser.me/api/portraits/women/44.jpg',
-    specializations: ['Corporate Law', 'Contract Law'],
-    rating: 4.8,
-    reviewCount: 124,
-    yearsOfExperience: 12,
-    location: 'New York, NY',
-    email: 'sarah.johnson@example.com',
-    phone: '(212) 555-1234',
-    assignedAt: '2023-05-20'
-  },
+  lawyer: null,
+  lawyerApplicants: [
+    {
+      id: 'lawyer-1',
+      name: 'Sarah Johnson',
+      photo: 'https://randomuser.me/api/portraits/women/44.jpg',
+      specializations: ['Corporate Law', 'Contract Law'],
+      rating: 4.8,
+      reviewCount: 124,
+      yearsOfExperience: 12,
+      location: 'New York, NY',
+      appliedAt: '2023-05-18',
+      proposedFee: '$3,500',
+      estimatedTime: '3 weeks',
+      coverLetter: 'I have extensive experience with contract disputes in the software industry and can help negotiate a resolution or pursue litigation if necessary. My background in technology law gives me insight into typical development contracts and timelines.'
+    },
+    {
+      id: 'lawyer-2',
+      name: 'Michael Chen',
+      photo: 'https://randomuser.me/api/portraits/men/22.jpg',
+      specializations: ['Intellectual Property', 'Contract Law'],
+      rating: 4.9,
+      reviewCount: 87,
+      yearsOfExperience: 8,
+      location: 'San Francisco, CA',
+      appliedAt: '2023-05-19',
+      proposedFee: '$3,800',
+      estimatedTime: '2-4 weeks',
+      coverLetter: 'Having worked with numerous tech companies on contract disputes, I understand the technical aspects involved. I can help review your agreement and develop a strategy for resolution, whether through negotiation or legal action.'
+    },
+    {
+      id: 'lawyer-3',
+      name: 'Jennifer Williams',
+      photo: 'https://randomuser.me/api/portraits/women/67.jpg',
+      specializations: ['Corporate Law', 'Business Litigation'],
+      rating: 4.7,
+      reviewCount: 92,
+      yearsOfExperience: 15,
+      location: 'Chicago, IL',
+      appliedAt: '2023-05-20',
+      proposedFee: '$4,200',
+      estimatedTime: '4 weeks',
+      coverLetter: 'My litigation experience would be valuable in this dispute. I can help analyze the contract, document the failures to perform, and prepare for potential litigation if needed, while also exploring settlement options.'
+    }
+  ],
   timeline: [
     { date: '2023-05-15', action: 'Case created', actor: 'Client' },
     { date: '2023-05-18', action: 'Lawyer application received', actor: 'Sarah Johnson' },
@@ -88,6 +120,14 @@ const CaseDetailPage = () => {
   const [caseData, setCaseData] = useState(null)
   const [isLoading, setIsLoading] = useState(true)
   const [newMessage, setNewMessage] = useState('')
+  const [isApplyModalOpen, setIsApplyModalOpen] = useState(false)
+  const [applicationMessage, setApplicationMessage] = useState('')
+
+  // Mock current user data (replace with actual auth context later)
+  const currentUser = {
+    role: 'lawyer', // Can be 'client' or 'lawyer'
+    id: 'lawyer-999' // Unique ID for the logged-in user
+  };
 
   // Simulate loading case data
   useEffect(() => {
@@ -126,6 +166,33 @@ const CaseDetailPage = () => {
     }))
     
     setNewMessage('')
+  }
+
+  const handleAppointLawyer = (lawyerId) => {
+    // In real app, this would make an API call to appoint lawyer
+    console.log(`Appointing lawyer ${lawyerId} to case ${id}`)
+    
+    // For demo purposes, update the state
+    setCaseData(prev => {
+      const selectedLawyer = prev.lawyerApplicants.find(lawyer => lawyer.id === lawyerId)
+      return {
+        ...prev,
+        lawyer: selectedLawyer,
+        status: 'in_progress',
+        lawyerApplicants: []
+      }
+    })
+    
+    // Switch to overview tab
+    setActiveTab('overview')
+  }
+
+  const handleApplySubmit = () => {
+    console.log('Sending application message:', applicationMessage)
+    // TODO: Implement API call to submit application
+    // Close modal after submission
+    setIsApplyModalOpen(false)
+    setApplicationMessage('')
   }
 
   if (isLoading) {
@@ -174,10 +241,20 @@ const CaseDetailPage = () => {
           </div>
           
           <div className="mt-4 md:mt-0 flex space-x-2">
-            <button className="btn btn-outline">
-              Edit Case
-            </button>
-            {caseData.status === 'in_progress' && (
+            {currentUser.role === 'lawyer' && !caseData.lawyer && (
+              <button 
+                onClick={() => setIsApplyModalOpen(true)} 
+                className="btn btn-primary"
+              >
+                Apply to Case
+              </button>
+            )}
+            {currentUser.role === 'client' && (
+              <button className="btn btn-outline">
+                Edit Case
+              </button>
+            )}
+            {caseData.status === 'in_progress' && currentUser.role === 'client' && (
               <button className="btn btn-primary">
                 Close Case
               </button>
@@ -189,10 +266,10 @@ const CaseDetailPage = () => {
       {/* Tabs Navigation */}
       <div className="bg-white rounded-lg shadow-md overflow-hidden mb-6">
         <div className="border-b">
-          <nav className="flex">
+          <nav className="-mb-px flex">
             <button
               onClick={() => setActiveTab('overview')}
-              className={`px-6 py-4 text-sm font-medium border-b-2 ${
+              className={`flex-1 whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm text-center ${
                 activeTab === 'overview'
                   ? 'border-primary text-primary'
                   : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
@@ -200,32 +277,32 @@ const CaseDetailPage = () => {
             >
               Overview
             </button>
+            {/* Conditionally render Applicants tab */}
+            {currentUser.role === 'client' && !caseData.lawyer && (
+              <button
+                onClick={() => setActiveTab('applicants')}
+                className={`flex-1 whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm text-center ${
+                  activeTab === 'applicants'
+                    ? 'border-primary text-primary'
+                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                }`}
+              >
+                Applicants ({caseData.lawyerApplicants?.length || 0})
+              </button>
+            )}
             <button
               onClick={() => setActiveTab('documents')}
-              className={`px-6 py-4 text-sm font-medium border-b-2 ${
+              className={`flex-1 whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm text-center ${
                 activeTab === 'documents'
                   ? 'border-primary text-primary'
                   : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
               }`}
             >
-              Documents
-            </button>
-            <button
-              onClick={() => setActiveTab('messages')}
-              className={`px-6 py-4 text-sm font-medium border-b-2 ${
-                activeTab === 'messages'
-                  ? 'border-primary text-primary'
-                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-              }`}
-            >
-              Messages
-              <span className="ml-2 rounded-full bg-primary/10 text-primary text-xs px-2 py-0.5">
-                {caseData.messages.length}
-              </span>
+              Documents ({caseData.documents.length})
             </button>
             <button
               onClick={() => setActiveTab('timeline')}
-              className={`px-6 py-4 text-sm font-medium border-b-2 ${
+              className={`flex-1 whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm text-center ${
                 activeTab === 'timeline'
                   ? 'border-primary text-primary'
                   : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
@@ -233,325 +310,387 @@ const CaseDetailPage = () => {
             >
               Timeline
             </button>
+            <button
+              onClick={() => setActiveTab('messages')}
+              className={`flex-1 whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm text-center ${
+                activeTab === 'messages'
+                  ? 'border-primary text-primary'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+              }`}
+            >
+              Messages
+            </button>
           </nav>
         </div>
+      </div>
 
-        {/* Tab Content */}
-        <div className="p-6">
-          {/* Overview Tab */}
-          {activeTab === 'overview' && (
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-              {/* Case Details */}
-              <div className="lg:col-span-2">
-                <h2 className="text-lg font-semibold mb-4">Case Details</h2>
-                <div className="bg-gray-50 rounded-lg p-4 mb-6">
-                  <h3 className="text-sm font-medium text-gray-500 mb-2">Description</h3>
-                  <p className="text-gray-800 whitespace-pre-line">{caseData.description}</p>
-                </div>
-                
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-                  <div>
-                    <h3 className="text-sm font-medium text-gray-500 mb-2">Status</h3>
-                    <div>{getStatusBadge(caseData.status)}</div>
-                  </div>
-                  <div>
-                    <h3 className="text-sm font-medium text-gray-500 mb-2">Case Type</h3>
-                    <p>{caseData.type}</p>
-                  </div>
-                  <div>
-                    <h3 className="text-sm font-medium text-gray-500 mb-2">Your Role</h3>
-                    <p className="capitalize">{caseData.role}</p>
-                  </div>
-                  <div>
-                    <h3 className="text-sm font-medium text-gray-500 mb-2">Budget</h3>
-                    <p>${caseData.budget.toLocaleString()}</p>
-                  </div>
-                  <div>
-                    <h3 className="text-sm font-medium text-gray-500 mb-2">Created On</h3>
-                    <p>{formatDate(caseData.createdAt)}</p>
-                  </div>
-                  <div>
-                    <h3 className="text-sm font-medium text-gray-500 mb-2">Deadline</h3>
-                    <p>{formatDate(caseData.deadline)}</p>
-                  </div>
-                </div>
-                
-                <div className="mb-6">
-                  <h3 className="text-sm font-medium text-gray-500 mb-2">Recent Activity</h3>
-                  <div className="bg-gray-50 rounded-lg p-4">
-                    <ul className="space-y-3">
-                      {caseData.timeline.slice(-3).map((item, index) => (
-                        <li key={index} className="flex items-start">
-                          <div className="flex-shrink-0 h-4 w-4 rounded-full bg-primary mt-1 mr-3"></div>
-                          <div>
-                            <p className="text-sm text-gray-800">{item.action}</p>
-                            <p className="text-xs text-gray-500">
-                              {formatDate(item.date)} by {item.actor}
-                            </p>
-                          </div>
-                        </li>
-                      ))}
-                    </ul>
-                    <button 
-                      onClick={() => setActiveTab('timeline')}
-                      className="text-primary hover:underline text-sm mt-3"
-                    >
-                      View full timeline
-                    </button>
-                  </div>
-                </div>
-              </div>
-              
-              {/* Lawyer Information */}
+      {/* Tab Content */}
+      <div className="bg-white rounded-lg shadow-md p-6">
+        {activeTab === 'overview' && (
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
+            <h2 className="text-xl font-semibold mb-4">Case Details</h2>
+            <p className="text-gray-700 mb-6 whitespace-pre-wrap">{caseData.description}</p>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
               <div>
-                <h2 className="text-lg font-semibold mb-4">Assigned Lawyer</h2>
-                {caseData.lawyer ? (
-                  <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
-                    <div className="p-6">
-                      <div className="flex items-start">
+                <h3 className="text-lg font-medium mb-2">Key Information</h3>
+                <ul className="space-y-2 text-gray-600">
+                  <li><strong>Type:</strong> {caseData.type}</li>
+                  <li><strong>Role:</strong> <span className="capitalize">{caseData.role}</span></li>
+                  <li><strong>Budget:</strong> ${caseData.budget.toLocaleString()}</li>
+                  <li><strong>Deadline:</strong> {caseData.deadline ? formatDate(caseData.deadline) : 'N/A'}</li>
+                  <li><strong>Last Updated:</strong> {formatDate(caseData.updatedAt)}</li>
+                </ul>
+              </div>
+
+              {/* Conditionally render Assigned Lawyer section */}
+              {caseData.lawyer && (currentUser.role === 'client' || currentUser.id === caseData.lawyer.id) && (
+                <div>
+                  <h3 className="text-lg font-medium mb-3">Assigned Lawyer</h3>
+                  <div className="flex items-center">
+                    <img src={caseData.lawyer.photo} alt={caseData.lawyer.name} className="w-16 h-16 rounded-full mr-4"/>
+                    <div>
+                      <Link to={`/lawyer/${caseData.lawyer.id}`} className="font-semibold text-primary hover:underline">
+                        {caseData.lawyer.name}
+                      </Link>
+                      <div className="text-sm text-gray-500">{caseData.lawyer.specializations.join(', ')}</div>
+                      <div className="flex items-center mt-1">
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-yellow-500" fill="currentColor" viewBox="0 0 24 24" stroke="none">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" />
+                        </svg>
+                        <span className="ml-1 text-sm font-medium">{caseData.lawyer.rating}</span>
+                        <span className="ml-1 text-sm text-gray-500">({caseData.lawyer.reviewCount} reviews)</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* If no lawyer assigned and user is client, show a message */}
+              {!caseData.lawyer && currentUser.role === 'client' && (
+                <div>
+                  <h3 className="text-lg font-medium mb-3">Assigned Lawyer</h3>
+                  <p className="text-gray-600 italic">
+                    No lawyer has been assigned yet. View applicants to select representation.
+                  </p>
+                </div>
+              )}
+              {/* If lawyer is viewing and not assigned, show nothing */}
+              {!caseData.lawyer && currentUser.role === 'lawyer' && (
+                <div>
+                  <h3 className="text-lg font-medium mb-3">Assigned Lawyer</h3>
+                  <p className="text-gray-600 italic">
+                    A lawyer has not been assigned to this case yet.
+                  </p>
+                </div>
+              )}
+            </div>
+          </motion.div>
+        )}
+
+        {/* Conditionally render Applicants content */}
+        {activeTab === 'applicants' && currentUser.role === 'client' && !caseData.lawyer && (
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
+            <h2 className="text-lg font-semibold mb-4">Lawyer Applicants</h2>
+            <p className="text-gray-700 mb-6">
+              The following lawyers have applied to handle your case. Review their profiles and proposals to select the best match for your legal needs.
+            </p>
+            
+            <div className="space-y-6">
+              {caseData.lawyerApplicants.map((lawyer) => (
+                <motion.div 
+                  key={lawyer.id}
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="bg-white border border-gray-200 rounded-lg overflow-hidden"
+                >
+                  <div className="p-6">
+                    <div className="flex flex-col md:flex-row md:items-start gap-4">
+                      <div className="flex-shrink-0">
                         <img 
-                          src={caseData.lawyer.photo} 
-                          alt={caseData.lawyer.name} 
-                          className="w-16 h-16 rounded-full mr-4"
+                          src={lawyer.photo} 
+                          alt={lawyer.name} 
+                          className="w-20 h-20 md:w-24 md:h-24 rounded-full object-cover"
                         />
-                        <div>
-                          <h3 className="text-lg font-medium text-gray-900">{caseData.lawyer.name}</h3>
-                          <div className="flex items-center mt-1">
-                            <div className="flex items-center">
-                              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-yellow-500" fill="currentColor" viewBox="0 0 24 24">
-                                <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
-                              </svg>
-                              <span className="ml-1 text-sm font-medium">{caseData.lawyer.rating}</span>
-                            </div>
-                            <span className="mx-2 text-xs text-gray-500">|</span>
-                            <span className="text-xs text-gray-500">{caseData.lawyer.reviewCount} reviews</span>
-                          </div>
-                          <div className="mt-1 text-sm text-gray-600">{caseData.lawyer.location}</div>
-                        </div>
                       </div>
                       
-                      <div className="mt-4">
-                        <div className="flex flex-wrap gap-2 mb-3">
-                          {caseData.lawyer.specializations.map((spec) => (
-                            <span key={spec} className="badge bg-primary/10 text-primary px-2 py-1 text-xs">
-                              {spec}
-                            </span>
-                          ))}
-                        </div>
-                        <div className="text-sm text-gray-600 mb-3">
-                          {caseData.lawyer.yearsOfExperience} years of experience
-                        </div>
-                        <div className="text-sm text-gray-600 mb-3">
-                          Assigned on {formatDate(caseData.lawyer.assignedAt)}
+                      <div className="flex-1">
+                        <div className="flex flex-wrap justify-between items-start">
+                          <div>
+                            <h3 className="text-lg font-medium text-gray-900">{lawyer.name}</h3>
+                            <p className="text-gray-600">{lawyer.location}</p>
+                            
+                            <div className="flex items-center mt-1 mb-2">
+                              <div className="flex">
+                                {[...Array(5)].map((_, i) => (
+                                  <svg 
+                                    key={i}
+                                    xmlns="http://www.w3.org/2000/svg" 
+                                    className={`h-4 w-4 ${i < Math.floor(lawyer.rating) ? 'text-yellow-400' : 'text-gray-300'}`}
+                                    viewBox="0 0 20 20"
+                                    fill="currentColor"
+                                  >
+                                    <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+                                  </svg>
+                                ))}
+                              </div>
+                              <span className="ml-1 text-sm text-gray-600">{lawyer.rating}</span>
+                              <span className="mx-1.5 text-gray-500">·</span>
+                              <span className="text-sm text-gray-600">{lawyer.reviewCount} reviews</span>
+                            </div>
+                            
+                            <div className="flex flex-wrap gap-2 mb-4">
+                              {lawyer.specializations.map((spec, index) => (
+                                <span key={index} className="px-2 py-1 bg-blue-50 text-blue-700 text-xs font-medium rounded">
+                                  {spec}
+                                </span>
+                              ))}
+                            </div>
+                            
+                            <div className="text-sm text-gray-700 mb-4">
+                              <p className="mb-2">{lawyer.coverLetter}</p>
+                            </div>
+                            
+                            <div className="grid grid-cols-2 gap-4 mb-4">
+                              <div>
+                                <span className="text-sm font-medium text-gray-500">Proposed Fee</span>
+                                <p className="text-primary font-bold">{lawyer.proposedFee}</p>
+                              </div>
+                              <div>
+                                <span className="text-sm font-medium text-gray-500">Estimated Time</span>
+                                <p className="text-gray-900">{lawyer.estimatedTime}</p>
+                              </div>
+                              <div>
+                                <span className="text-sm font-medium text-gray-500">Experience</span>
+                                <p className="text-gray-900">{lawyer.yearsOfExperience} years</p>
+                              </div>
+                              <div>
+                                <span className="text-sm font-medium text-gray-500">Applied On</span>
+                                <p className="text-gray-900">{formatDate(lawyer.appliedAt)}</p>
+                              </div>
+                            </div>
+                          </div>
                         </div>
                         
-                        <div className="space-y-2 mt-4">
-                          <h4 className="text-sm font-medium text-gray-700">Contact Information</h4>
-                          <div className="flex items-center text-sm">
-                            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-gray-500 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-                            </svg>
-                            <a href={`mailto:${caseData.lawyer.email}`} className="text-primary hover:underline">
-                              {caseData.lawyer.email}
-                            </a>
-                          </div>
-                          <div className="flex items-center text-sm">
-                            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-gray-500 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
-                            </svg>
-                            <a href={`tel:${caseData.lawyer.phone}`} className="text-primary hover:underline">
-                              {caseData.lawyer.phone}
-                            </a>
-                          </div>
+                        <div className="flex gap-3 mt-4">
+                          <Link 
+                            to={`/client/lawyer/${lawyer.id}`} 
+                            className="btn btn-sm btn-outline"
+                          >
+                            View Full Profile
+                          </Link>
+                          <button 
+                            onClick={() => handleAppointLawyer(lawyer.id)}
+                            className="btn btn-sm btn-primary"
+                          >
+                            Appoint Lawyer
+                          </button>
                         </div>
                       </div>
                     </div>
-                    <div className="bg-gray-50 p-4 border-t border-gray-200">
-                      <div className="flex space-x-2">
-                        <button 
-                          onClick={() => setActiveTab('messages')} 
-                          className="w-full btn btn-sm btn-primary"
-                        >
-                          Send Message
-                        </button>
-                        <Link to={`/lawyer/${caseData.lawyer.id}`} className="w-full btn btn-sm btn-outline">
-                          View Profile
-                        </Link>
-                      </div>
-                    </div>
                   </div>
-                ) : (
-                  <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 text-yellow-800">
-                    <p className="text-sm font-medium">No lawyer assigned yet</p>
-                    <p className="text-xs mt-1">
-                      You will be notified when lawyers apply to your case.
-                    </p>
-                  </div>
-                )}
-              </div>
+                </motion.div>
+              ))}
             </div>
-          )}
+          </motion.div>
+        )}
 
-          {/* Documents Tab */}
-          {activeTab === 'documents' && (
-            <div>
-              <div className="flex justify-between items-center mb-6">
-                <h2 className="text-lg font-semibold">Case Documents</h2>
-                <button className="btn btn-sm btn-primary">
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-                  </svg>
-                  Upload Document
-                </button>
-              </div>
-              
-              <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
-                <div className="min-w-full divide-y divide-gray-200">
-                  <div className="bg-gray-50 px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider grid grid-cols-12">
-                    <div className="col-span-7">Name</div>
-                    <div className="col-span-2">Size</div>
-                    <div className="col-span-2">Uploaded</div>
-                    <div className="col-span-1"></div>
-                  </div>
-                  <div className="bg-white divide-y divide-gray-200">
-                    {caseData.documents.length > 0 ? (
-                      caseData.documents.map((doc, index) => (
-                        <div key={index} className="px-6 py-4 text-sm text-gray-900 grid grid-cols-12 items-center">
-                          <div className="col-span-7 flex items-center">
-                            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-gray-500 mr-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                            </svg>
-                            <span className="font-medium">{doc.name}</span>
-                          </div>
-                          <div className="col-span-2 text-gray-500">{doc.size}</div>
-                          <div className="col-span-2 text-gray-500">{formatDate(doc.uploadedAt)}</div>
-                          <div className="col-span-1 flex justify-end space-x-2">
-                            <button 
-                              className="text-primary hover:text-primary-dark"
-                              title="Download"
-                            >
-                              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-                              </svg>
-                            </button>
-                          </div>
-                        </div>
-                      ))
-                    ) : (
-                      <div className="px-6 py-10 text-center">
-                        <svg xmlns="http://www.w3.org/2000/svg" className="h-10 w-10 mx-auto text-gray-400 mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 13h6m-3-3v6m5 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                        </svg>
-                        <p className="text-gray-500 mb-2">No documents uploaded yet</p>
-                        <button className="btn btn-sm btn-primary">
-                          Upload Document
-                        </button>
-                      </div>
-                    )}
-                  </div>
+        {activeTab === 'documents' && (
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
+            <div className="flex justify-between items-center mb-6">
+              <h2 className="text-lg font-semibold">Case Documents</h2>
+              <button className="btn btn-sm btn-primary">
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                </svg>
+                Upload Document
+              </button>
+            </div>
+            
+            <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
+              <div className="min-w-full divide-y divide-gray-200">
+                <div className="bg-gray-50 px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider grid grid-cols-12">
+                  <div className="col-span-7">Name</div>
+                  <div className="col-span-2">Size</div>
+                  <div className="col-span-2">Uploaded</div>
+                  <div className="col-span-1"></div>
                 </div>
-              </div>
-            </div>
-          )}
-
-          {/* Messages Tab */}
-          {activeTab === 'messages' && (
-            <div>
-              <h2 className="text-lg font-semibold mb-4">Messages</h2>
-              
-              <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
-                {/* Messages List */}
-                <div className="max-h-96 overflow-y-auto p-4 space-y-4">
-                  {caseData.messages.length > 0 ? (
-                    caseData.messages.map((message) => (
-                      <div 
-                        key={message.id} 
-                        className={`flex ${message.sender === 'client' ? 'justify-end' : 'justify-start'}`}
-                      >
-                        <div 
-                          className={`max-w-[75%] rounded-lg p-3 ${
-                            message.sender === 'client' 
-                              ? 'bg-primary/10 text-gray-900' 
-                              : 'bg-gray-100 text-gray-900'
-                          }`}
-                        >
-                          <div className="text-sm">{message.text}</div>
-                          <div className="text-xs text-gray-500 mt-1">
-                            {formatTimestamp(message.timestamp)}
-                          </div>
+                <div className="bg-white divide-y divide-gray-200">
+                  {caseData.documents.length > 0 ? (
+                    caseData.documents.map((doc, index) => (
+                      <div key={index} className="px-6 py-4 text-sm text-gray-900 grid grid-cols-12 items-center">
+                        <div className="col-span-7 flex items-center">
+                          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-gray-500 mr-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                          </svg>
+                          <span className="font-medium">{doc.name}</span>
+                        </div>
+                        <div className="col-span-2 text-gray-500">{doc.size}</div>
+                        <div className="col-span-2 text-gray-500">{formatDate(doc.uploadedAt)}</div>
+                        <div className="col-span-1 flex justify-end space-x-2">
+                          <button 
+                            className="text-primary hover:text-primary-dark"
+                            title="Download"
+                          >
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                            </svg>
+                          </button>
                         </div>
                       </div>
                     ))
                   ) : (
-                    <div className="text-center py-10">
+                    <div className="px-6 py-10 text-center">
                       <svg xmlns="http://www.w3.org/2000/svg" className="h-10 w-10 mx-auto text-gray-400 mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 13h6m-3-3v6m5 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                       </svg>
-                      <p className="text-gray-500">No messages yet</p>
+                      <p className="text-gray-500 mb-2">No documents uploaded yet</p>
+                      <button className="btn btn-sm btn-primary">
+                        Upload Document
+                      </button>
                     </div>
                   )}
                 </div>
-                
-                {/* Message Input */}
-                <div className="border-t border-gray-200 p-4">
-                  <form onSubmit={handleSendMessage} className="flex">
-                    <input
-                      type="text"
-                      value={newMessage}
-                      onChange={(e) => setNewMessage(e.target.value)}
-                      className="input flex-grow mr-2"
-                      placeholder="Type your message..."
-                    />
-                    <button 
-                      type="submit"
-                      className="btn btn-primary flex-shrink-0"
-                      disabled={!newMessage.trim()}
-                    >
-                      <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
-                      </svg>
-                    </button>
-                  </form>
-                </div>
               </div>
             </div>
-          )}
+          </motion.div>
+        )}
 
-          {/* Timeline Tab */}
-          {activeTab === 'timeline' && (
-            <div>
-              <h2 className="text-lg font-semibold mb-6">Case Timeline</h2>
-              
-              <div className="relative pl-8 space-y-8 before:absolute before:inset-0 before:ml-5 before:w-0.5 before:bg-gradient-to-b before:from-primary before:via-primary before:to-gray-200">
-                {caseData.timeline.map((item, index) => (
-                  <div key={index} className="relative">
-                    <div className="absolute left-0 -translate-x-full transform -translate-y-1/2 w-4 h-4 rounded-full bg-primary"></div>
-                    <div className="bg-white rounded-lg shadow-sm p-4">
-                      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center mb-2">
-                        <h3 className="text-base font-medium text-gray-900">{item.action}</h3>
-                        <time className="text-xs text-gray-500">{formatDate(item.date)}</time>
-                      </div>
-                      <p className="text-sm text-gray-600">By {item.actor}</p>
-                    </div>
-                  </div>
-                ))}
-                
-                {/* Starting point */}
-                <div className="relative">
+        {activeTab === 'timeline' && (
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
+            <h2 className="text-lg font-semibold mb-6">Case Timeline</h2>
+            
+            <div className="relative pl-8 space-y-8 before:absolute before:inset-0 before:ml-5 before:w-0.5 before:bg-gradient-to-b before:from-primary before:via-primary before:to-gray-200">
+              {caseData.timeline.map((item, index) => (
+                <div key={index} className="relative">
                   <div className="absolute left-0 -translate-x-full transform -translate-y-1/2 w-4 h-4 rounded-full bg-primary"></div>
-                  <div className="bg-white rounded-lg shadow-sm p-4 border border-gray-200">
+                  <div className="bg-white rounded-lg shadow-sm p-4">
                     <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center mb-2">
-                      <h3 className="text-base font-medium text-gray-900">Case Created</h3>
-                      <time className="text-xs text-gray-500">{formatDate(caseData.createdAt)}</time>
+                      <h3 className="text-base font-medium text-gray-900">{item.action}</h3>
+                      <time className="text-xs text-gray-500">{formatDate(item.date)}</time>
                     </div>
-                    <p className="text-sm text-gray-600">Case was created and posted to the marketplace</p>
+                    <p className="text-sm text-gray-600">By {item.actor}</p>
                   </div>
+                </div>
+              ))}
+              
+              {/* Starting point */}
+              <div className="relative">
+                <div className="absolute left-0 -translate-x-full transform -translate-y-1/2 w-4 h-4 rounded-full bg-primary"></div>
+                <div className="bg-white rounded-lg shadow-sm p-4 border border-gray-200">
+                  <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center mb-2">
+                    <h3 className="text-base font-medium text-gray-900">Case Created</h3>
+                    <time className="text-xs text-gray-500">{formatDate(caseData.createdAt)}</time>
+                  </div>
+                  <p className="text-sm text-gray-600">Case was created and posted to the marketplace</p>
                 </div>
               </div>
             </div>
-          )}
-        </div>
+          </motion.div>
+        )}
+
+        {activeTab === 'messages' && (
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
+            <h2 className="text-lg font-semibold mb-4">Messages</h2>
+            
+            <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
+              {/* Messages List */}
+              <div className="max-h-96 overflow-y-auto p-4 space-y-4">
+                {caseData.messages.length > 0 ? (
+                  caseData.messages.map((message) => (
+                    <div 
+                      key={message.id} 
+                      className={`flex ${message.sender === 'client' ? 'justify-end' : 'justify-start'}`}
+                    >
+                      <div 
+                        className={`max-w-[75%] rounded-lg p-3 ${
+                          message.sender === 'client' 
+                            ? 'bg-primary/10 text-gray-900' 
+                            : 'bg-gray-100 text-gray-900'
+                        }`}
+                      >
+                        <div className="text-sm">{message.text}</div>
+                        <div className="text-xs text-gray-500 mt-1">
+                          {formatTimestamp(message.timestamp)}
+                        </div>
+                      </div>
+                    </div>
+                  ))
+                ) : (
+                  <div className="text-center py-10">
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-10 w-10 mx-auto text-gray-400 mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                    </svg>
+                    <p className="text-gray-500">No messages yet</p>
+                  </div>
+                )}
+              </div>
+              
+              {/* Message Input */}
+              <div className="border-t border-gray-200 p-4">
+                <form onSubmit={handleSendMessage} className="flex">
+                  <input
+                    type="text"
+                    value={newMessage}
+                    onChange={(e) => setNewMessage(e.target.value)}
+                    className="input flex-grow mr-2"
+                    placeholder="Type your message..."
+                  />
+                  <button 
+                    type="submit"
+                    className="btn btn-primary flex-shrink-0"
+                    disabled={!newMessage.trim()}
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+                    </svg>
+                  </button>
+                </form>
+              </div>
+            </div>
+          </motion.div>
+        )}
       </div>
+
+      {/* Apply to Case Modal */}
+      {isApplyModalOpen && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg shadow-xl p-6 w-full max-w-md">
+            <h2 className="text-xl font-semibold mb-4">Apply to Case: {caseData.title}</h2>
+            <form onSubmit={(e) => { e.preventDefault(); handleApplySubmit(); }}>
+              <div className="mb-4">
+                <label htmlFor="applicationMessage" className="block text-sm font-medium text-gray-700 mb-1">
+                  Your Message / Cover Letter
+                </label>
+                <textarea
+                  id="applicationMessage"
+                  rows="5"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary focus:border-primary"
+                  placeholder="Explain why you're a good fit for this case..."
+                  value={applicationMessage}
+                  onChange={(e) => setApplicationMessage(e.target.value)}
+                  required
+                ></textarea>
+              </div>
+              <div className="flex justify-end space-x-2">
+                <button 
+                  type="button" 
+                  onClick={() => setIsApplyModalOpen(false)} 
+                  className="btn btn-outline"
+                >
+                  Cancel
+                </button>
+                <button 
+                  type="submit" 
+                  className="btn btn-primary"
+                >
+                  Submit Application
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
