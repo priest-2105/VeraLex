@@ -15,7 +15,7 @@ const CheckEmailPage = () => {
           Didn't receive the email? Check your spam folder or try signing up again.
         </p>
         <Link 
-          to="/login"
+          to="/auth/signin"
           className="btn btn-primary w-full"
         >
           Back to Login
