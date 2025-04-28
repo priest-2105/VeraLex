@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Link, useNavigate, useLocation } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { useForm } from 'react-hook-form'
@@ -22,6 +22,7 @@ const SignInPage = () => {
   const [credentials, setCredentials] = useState({ email: '', password: '' })
   const [showResend, setShowResend] = useState(false)
   const [resendMessage, setResendMessage] = useState('')
+  const [showPassword, setShowPassword] = useState(false)
   const navigate = useNavigate()
   const location = useLocation()
   const dispatch = useDispatch()
@@ -40,6 +41,32 @@ const SignInPage = () => {
 
   // Determine redirect path after login
   const from = location.state?.from?.pathname || "/"; // Default to home
+
+  // If an active session exists, redirect straight to dashboard
+  useEffect(() => {
+    const checkCurrentSession = async () => {
+      try {
+        const user = await account.get()
+        const DATABASE_ID = import.meta.env.VITE_APPWRITE_DATABASE_ID
+        const PROFILE_COLLECTION_ID = import.meta.env.VITE_APPWRITE_PROFILE_COLLECTION_ID
+        const profile = await databases.getDocument(
+          DATABASE_ID,
+          PROFILE_COLLECTION_ID,
+          user.$id
+        )
+        const role = profile.role
+        const redirectPath = role === 'lawyer'
+          ? '/lawyer/dashboard'
+          : role === 'client'
+            ? '/client/dashboard'
+            : '/'
+        navigate(redirectPath, { replace: true })
+      } catch (e) {
+        // No active session or profile fetch failed; stay on sign-in page
+      }
+    }
+    checkCurrentSession()
+  }, [navigate])
 
   const onSubmit = async (data) => {
     setServerError('')
@@ -182,22 +209,31 @@ const SignInPage = () => {
         </div>
 
         <div>
-          <div className="flex items-center justify-between mb-1">
+          <div className="relative">
             <label htmlFor="password" className="block text-sm font-medium text-gray-700">
               Password
             </label>
-            <Link to="/auth/forgot-password" className="text-sm text-primary hover:underline">
+            <Link to="/auth/forgot-password" className="text-sm text-primary hover:underline absolute right-0 top-0">
               Forgot password?
             </Link>
           </div>
-          <input
-            id="password"
-            type="password"
-            {...register('password')} 
-            required
-            className={`input ${errors.password ? 'border-red-500' : ''}`}
-            placeholder="••••••••"
-          />
+          <div className="relative">
+            <input
+              id="password"
+              type={showPassword ? 'text' : 'password'}
+              {...register('password')} 
+              required
+              className={`input pr-10 ${errors.password ? 'border-red-500' : ''}`}
+              placeholder="••••••••"
+            />
+            <button
+              type="button"
+              onClick={() => setShowPassword(prev => !prev)}
+              className="absolute inset-y-0 right-3 flex items-center text-gray-600"
+            >
+              {showPassword ? '🙈' : '👁️'}
+            </button>
+          </div>
         </div>
 
         {/* Remember me is optional, remove if not needed */}

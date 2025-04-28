@@ -4,10 +4,10 @@ import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { selectCurrentUser, setUser } from '../../store/authSlice'
-import { account, databases } from '../../lib/appwrite'
+import { account, databases, storage } from '../../lib/appwrite'
 import Alert from '../../components/common/Alert'
 import LoadingSpinner from '../../components/common/LoadingSpinner'
-import { AppwriteException } from 'appwrite'
+import { AppwriteException, ID } from 'appwrite'
 
 // Zod schema for profile validation
 const profileSchema = z.object({
@@ -21,6 +21,8 @@ const profileSchema = z.object({
 // Fetch Appwrite IDs from environment variables
 const DATABASE_ID = import.meta.env.VITE_APPWRITE_DATABASE_ID
 const PROFILE_COLLECTION_ID = import.meta.env.VITE_APPWRITE_PROFILE_COLLECTION_ID
+const AVATAR_BUCKET_ID = import.meta.env.VITE_APPWRITE_AVATAR_BUCKET_ID
+const API_ENDPOINT = import.meta.env.VITE_APPWRITE_API_ENDPOINT
 
 const ProfilePage = () => {
   const dispatch = useDispatch()
@@ -28,8 +30,28 @@ const ProfilePage = () => {
   
   const [isEditing, setIsEditing] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
+  const [uploadingAvatar, setUploadingAvatar] = useState(false)
   const [serverError, setServerError] = useState('')
   const [successMessage, setSuccessMessage] = useState('')
+
+  // Avatar file state and preview
+  const [avatarFile, setAvatarFile] = useState(null)
+  const [avatarPreview, setAvatarPreview] = useState(currentUser?.profile?.profileImage || '')
+
+  // Update preview when currentUser changes
+  useEffect(() => {
+    setAvatarPreview(currentUser?.profile?.profileImage || '')
+  }, [currentUser?.profile?.profileImage])
+
+  // Handle avatar file selection
+  const handleAvatarChange = (e) => {
+    const file = e.target.files?.[0]
+    if (file) {
+      setAvatarFile(file)
+      const url = URL.createObjectURL(file)
+      setAvatarPreview(url)
+    }
+  }
 
   const defaultValues = {
     name: currentUser?.name || '',
@@ -63,7 +85,31 @@ const ProfilePage = () => {
     setIsLoading(true)
 
     try {
-      // 1. Update Name (if changed)
+      // 0. Upload new avatar if selected
+      const profileDataToUpdate = {}
+      if (avatarFile) {
+        try {
+          setUploadingAvatar(true)
+          const fileId = ID.unique()
+          const uploaded = await storage.createFile(
+            AVATAR_BUCKET_ID,
+            fileId,
+            avatarFile
+          )
+          const imageUrl = `${API_ENDPOINT}/storage/buckets/${AVATAR_BUCKET_ID}/files/${uploaded.$id}/view`
+          profileDataToUpdate.profileImage = imageUrl
+          console.log('Avatar uploaded:', imageUrl)
+        } catch (uploadError) {
+          console.error('Avatar upload failed:', uploadError)
+        } finally {
+          setUploadingAvatar(false)
+        }
+      }
+      // Prepare other profile updates
+      if (!profileDataToUpdate.profileImage) {
+        // no avatar change, start with empty update object
+      }
+      // 1. Update name
       if (data.name !== currentUser.name) {
         await account.updateName(data.name)
         console.log("Name updated successfully.")
@@ -73,7 +119,6 @@ const ProfilePage = () => {
       // We won't update email here.
 
       // 2. Prepare profile data for database update (only changed fields)
-      const profileDataToUpdate = {}
       if (data.phone !== currentUser.profile?.phone) profileDataToUpdate.phone = data.phone
       if (data.address !== currentUser.profile?.address) profileDataToUpdate.address = data.address
       if (data.bio !== currentUser.profile?.bio) profileDataToUpdate.bio = data.bio
@@ -155,10 +200,18 @@ const ProfilePage = () => {
           {/* Profile Image */}
           <div className="flex flex-col items-center">
             <img 
-              src={userAvatar} 
+              src={avatarPreview || userAvatar}
               alt={currentUser.name} 
               className="w-40 h-40 rounded-full object-cover mb-4 bg-gray-200"
             />
+            {isEditing && (
+              <input
+                type="file"
+                accept="image/*"
+                onChange={handleAvatarChange}
+                className="mt-2"
+              />
+            )}
             {!isEditing && (
               <button 
                 onClick={() => {
