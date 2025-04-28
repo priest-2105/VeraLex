@@ -333,6 +333,8 @@ const SignUpPage = () => {
 
     const DATABASE_ID = import.meta.env.VITE_APPWRITE_DATABASE_ID
     const PROFILE_COLLECTION_ID = import.meta.env.VITE_APPWRITE_PROFILE_COLLECTION_ID
+    const LAWYER_DETAILS_COLLECTION_ID = import.meta.env.VITE_APPWRITE_LAWYER_DETAILS_COLLECTION_ID || '680ebc0b0032f06423db'
+    const CLIENT_DETAILS_COLLECTION_ID = import.meta.env.VITE_APPWRITE_CLIENT_DETAILS_COLLECTION_ID || '680ebbd4000f3c29edf1'
 
     if (!DATABASE_ID || !PROFILE_COLLECTION_ID) {
       setServerError("Appwrite Database/Collection IDs not configured in .env")
@@ -358,15 +360,8 @@ const SignUpPage = () => {
         role: selectedRole,
         firstName: data.firstName,
         lastName: data.lastName,
-        email: data.email, // Store email in profile too for easier access?
-        // Lawyer specific
-        ...(selectedRole === 'lawyer' && {
-          barId: data.barId,
-          specializations: data.specializations,
-          isVerified: false, // Lawyers start as unverified
-        }),
-        // Add any other default client/shared profile fields here
-        phone: '', 
+        email: data.email,
+        phone: '',
         address: '',
         bio: '',
         profileImage: ''
@@ -380,14 +375,43 @@ const SignUpPage = () => {
       )
       console.log('Profile document created.')
 
-      // 3. Send Verification Email
+      // 2b. Create details document based on role
+      if (selectedRole === 'lawyer') {
+        const lawyerDetails = {
+          userId: createdUser.$id,
+          barId: data.barId,
+          specializations: data.specializations,
+          isVerified: false
+        }
+        await databases.createDocument(
+          DATABASE_ID,
+          LAWYER_DETAILS_COLLECTION_ID,
+          createdUser.$id,
+          lawyerDetails
+        )
+        console.log('Lawyer details document created.')
+      } else if (selectedRole === 'client') {
+        const clientDetails = { userId: createdUser.$id }
+        await databases.createDocument(
+          DATABASE_ID,
+          CLIENT_DETAILS_COLLECTION_ID,
+          createdUser.$id,
+          clientDetails
+        )
+        console.log('Client details document created.')
+      }
+
+      // 3. Create a session for the new user so we can send a verification email
+      await account.createEmailPasswordSession(data.email, data.password)
+      console.log('User session created for verification.');
+      // 4. Send Verification Email
       // Use your frontend URL where the verification page will live
-      const verificationUrl = `${window.location.origin}/auth/verify-email` 
+      const verificationUrl = `${window.location.origin}/auth/verify-email`
       console.log(`Requesting email verification with URL: ${verificationUrl}`)
       await account.createVerification(verificationUrl)
       console.log('Verification email request sent.')
 
-      // 4. Redirect to Check Email Page
+      // 5. Redirect to Check Email Page
       // Optionally pass email in state to display on the check email page
       navigate('/auth/check-email', { state: { email: data.email } })
 

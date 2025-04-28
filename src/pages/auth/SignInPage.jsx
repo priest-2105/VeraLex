@@ -19,6 +19,9 @@ const loginSchema = z.object({
 const SignInPage = () => {
   const [isLoading, setIsLoading] = useState(false)
   const [serverError, setServerError] = useState('')
+  const [credentials, setCredentials] = useState({ email: '', password: '' })
+  const [showResend, setShowResend] = useState(false)
+  const [resendMessage, setResendMessage] = useState('')
   const navigate = useNavigate()
   const location = useLocation()
   const dispatch = useDispatch()
@@ -40,6 +43,7 @@ const SignInPage = () => {
 
   const onSubmit = async (data) => {
     setServerError('')
+    setCredentials(data) // store for resend
     setIsLoading(true)
     
     try {
@@ -100,8 +104,9 @@ const SignInPage = () => {
       if (error instanceof AppwriteException) {
         if (error.code === 401) { // Unauthorized
           errorMsg = 'Invalid email or password.'
-        } else if (error.code === 403 && error.message.includes('Verify your email')) { // Might need adjustment based on exact error
+        } else if (error.code === 403 && error.message.toLowerCase().includes('verify')) {
           errorMsg = 'Please verify your email address before logging in.'
+          setShowResend(true)
         } else {
           errorMsg = error.message || 'Login failed. Please try again.'
         }
@@ -109,6 +114,33 @@ const SignInPage = () => {
         errorMsg = error.message || 'Login failed. Please try again.'
       }
       setServerError(errorMsg)
+      if (!(error instanceof AppwriteException && error.code === 403 && error.message.toLowerCase().includes('verify'))) {
+        setShowResend(false)
+      }
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  // Resend verification handler
+  const handleResend = async () => {
+    setResendMessage('')
+    setIsLoading(true)
+    const { email, password } = credentials
+    try {
+      // Attempt login to get session (may fail but might set cookie)
+      try {
+        await account.createEmailPasswordSession(email, password)
+      } catch (e) {
+        console.log('Resend session error (ignored):', e)
+      }
+      // Send verification email
+      const verificationUrl = `${window.location.origin}/auth/verify-email`
+      await account.createVerification(verificationUrl)
+      setResendMessage('Verification email sent. Please check your inbox.')
+    } catch (err) {
+      console.error('Resend verification failed:', err)
+      setResendMessage('Failed to resend verification. Please try again later.')
     } finally {
       setIsLoading(false)
     }
@@ -198,6 +230,21 @@ const SignInPage = () => {
           </Link>
         </p>
       </div>
+
+      {/* Resend Verification Button */}
+      {showResend && (
+        <div className="mt-4 text-center">
+          <button
+            type="button"
+            className="text-sm text-primary underline"
+            onClick={handleResend}
+            disabled={isLoading}
+          >
+            Resend Email Verification
+          </button>
+          {resendMessage && <p className="text-sm mt-2 text-green-600">{resendMessage}</p>}
+        </div>
+      )}
     </motion.div>
   )
 }
