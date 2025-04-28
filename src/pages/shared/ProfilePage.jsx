@@ -8,6 +8,7 @@ import { account, databases, storage } from '../../lib/appwrite'
 import Alert from '../../components/common/Alert'
 import LoadingSpinner from '../../components/common/LoadingSpinner'
 import { AppwriteException, ID } from 'appwrite'
+import defaultAvatar from '../../assets/user_person_black.jpg'
 
 // Zod schema for profile validation
 const profileSchema = z.object({
@@ -184,7 +185,7 @@ const ProfilePage = () => {
     return <LoadingSpinner /> // Or a message indicating user not found
   }
 
-  const userAvatar = currentUser.profile?.profileImage || 'https://via.placeholder.com/150' // Use placeholder if no image
+  const userAvatar = currentUser.profile?.profileImage || defaultAvatar
   const joinDate = currentUser?.$createdAt ? new Date(currentUser.$createdAt).toLocaleDateString('en-US', { month: 'long', year: 'numeric' }) : 'N/A'
 
   return (

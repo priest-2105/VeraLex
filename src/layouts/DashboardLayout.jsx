@@ -5,6 +5,7 @@ import { useSelector, useDispatch } from 'react-redux'
 import { selectCurrentUser, clearUser } from '../store/authSlice'
 import { account } from '../lib/appwrite'
 import LogoutConfirmationModal from '../components/common/LogoutConfirmationModal'
+import defaultAvatar from '../assets/user_person_black.jpg'
 
 const DashboardLayout = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(true)
@@ -22,7 +23,7 @@ const DashboardLayout = () => {
   // Extract user role from the embedded profile data
   const userRole = currentUser?.profile?.role || 'client'
   const userName = currentUser?.name || 'User'
-  const userAvatar = currentUser?.profile?.profileImage || 'https://via.placeholder.com/150'
+  const userAvatar = currentUser?.profile?.profileImage || defaultAvatar
   
   // Toggle sidebar on small screens
   const toggleSidebar = () => {
@@ -165,7 +166,7 @@ const DashboardLayout = () => {
               <img
                 src={userAvatar}
                 alt="User avatar"
-                className="w-10 h-10 rounded-full mr-3 bg-gray-300"
+                className="w-10 h-10 rounded-full mr-3 bg-gray-300 object-contain" 
               />
               <div className='text-left mr-auto'>
                 <div className="font-medium">{userName}</div>
@@ -335,7 +336,7 @@ const DashboardLayout = () => {
                   <img
                     src={userAvatar}
                     alt="User avatar"
-                    className="w-8 h-8 rounded-full bg-gray-300"
+                    className="w-8 h-8 rounded-full bg-gray-300 object-contain"
                   />
                   <div className="hidden md:block text-left">
                     <div className="text-sm font-medium text-gray-700">{userName}</div>
