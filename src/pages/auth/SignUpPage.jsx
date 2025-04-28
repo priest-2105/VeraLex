@@ -90,6 +90,7 @@ const RoleSelectionStep = ({
 
 const BasicInfoStep = ({ nextStep, prevStep }) => {
   const { register, formState: { errors }, trigger } = useFormContext()
+  const [showPassword, setShowPassword] = useState(false)
 
   const handleContinue = async () => {
     const fieldsToValidate = ['firstName', 'lastName', 'email', 'password']
@@ -154,13 +155,22 @@ const BasicInfoStep = ({ nextStep, prevStep }) => {
           <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1">
             Password
           </label>
-          <input
-            id="password"
-            type="password"
-            {...register('password')}
-            className={`input ${errors.password ? 'border-red-500' : ''}`}
-            placeholder="••••••••"
-          />
+          <div className="relative">
+            <input
+              id="password"
+              type={showPassword ? 'text' : 'password'}
+              {...register('password')}
+              className={`input pr-10 ${errors.password ? 'border-red-500' : ''}`}
+              placeholder="••••••••"
+            />
+            <button
+              type="button"
+              onClick={() => setShowPassword(prev => !prev)}
+              className="absolute inset-y-0 right-3 flex items-center text-gray-600"
+            >
+              {showPassword ? '🙈' : '👁️'}
+            </button>
+          </div>
           <p className="text-xs text-gray-500 mt-1">
             Must be at least 8 characters
           </p>
