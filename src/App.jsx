@@ -1,6 +1,10 @@
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom'
-import { lazy, Suspense } from 'react'
+import { lazy, Suspense, useEffect } from 'react'
 import './App.css'
+import { useDispatch, useSelector } from 'react-redux'
+import { checkUserSession, selectAuthStatus, selectCurrentUser } from './store/authSlice'
+import ProtectedRoute from './components/common/ProtectedRoute'
+import LoadingSpinner from './components/common/LoadingSpinner'
 
 // Layouts
 const MainLayout = lazy(() => import('./layouts/MainLayout'))
@@ -16,6 +20,9 @@ const ContactPage = lazy(() => import('./pages/public/ContactPage'))
 const SignInPage = lazy(() => import('./pages/auth/SignInPage'))
 const SignUpPage = lazy(() => import('./pages/auth/SignUpPage'))
 const ForgotPasswordPage = lazy(() => import('./pages/auth/ForgotPasswordPage'))
+const CheckEmailPage = lazy(() => import('./pages/auth/CheckEmailPage'))
+const VerifyEmailPage = lazy(() => import('./pages/auth/VerifyEmailPage'))
+const ResetPasswordPage = lazy(() => import('./pages/auth/ResetPasswordPage'))
 
 // Client Pages
 const ClientDashboardPage = lazy(() => import('./pages/client/DashboardPage'))
@@ -34,22 +41,30 @@ const LawyerMyCasesPage = lazy(() => import('./pages/lawyer/MyCasesPage'))
 const ProfilePage = lazy(() => import('./pages/shared/ProfilePage'))
 const LawyerProfilePage = lazy(() => import('./pages/shared/LawyerProfilePage'))
 const CaseDetailPage = lazy(() => import('./pages/client/CaseDetailPage'))
-
-// Loading Component
-const LoadingFallback = () => (
-  <div className="flex items-center justify-center min-h-screen">
-    <div className="w-16 h-16 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
-  </div>
-)
+const SettingsPage = lazy(() => import('./pages/shared/SettingsPage'))
 
 function App() {
-  
-  const isAuthenticated = false
-  const userRole = ''
+  const dispatch = useDispatch()
+  const authStatus = useSelector(selectAuthStatus)
+  const currentUser = useSelector(selectCurrentUser)
+
+  useEffect(() => {
+    if (authStatus === 'idle') {
+      dispatch(checkUserSession())
+    }
+  }, [authStatus, dispatch])
+
+  if (authStatus === 'loading' || authStatus === 'idle') {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <LoadingSpinner />
+      </div>
+    )
+  }
 
   return (
     <Router>
-      <Suspense fallback={<LoadingFallback />}>
+      <Suspense fallback={<LoadingSpinner />}>
         <Routes>
           {/* Public Routes */}
           <Route path="/" element={<MainLayout />}>
@@ -61,19 +76,22 @@ function App() {
           {/* Auth Routes */}
           <Route path="/auth" element={<AuthLayout />}>
             <Route path="signin" element={
-              isAuthenticated ? <Navigate to={`/${userRole}/dashboard`} /> : <SignInPage />
+              currentUser ? <Navigate to={`/${currentUser.profile.role}/dashboard`} replace /> : <SignInPage />
             } />
             <Route path="signup" element={
-              isAuthenticated ? <Navigate to={`/${userRole}/dashboard`} /> : <SignUpPage />
+              currentUser ? <Navigate to={`/${currentUser.profile.role}/dashboard`} replace /> : <SignUpPage />
             } />
             <Route path="forgot-password" element={<ForgotPasswordPage />} />
+            <Route path="check-email" element={<CheckEmailPage />} />
+            <Route path="verify-email" element={<VerifyEmailPage />} />
+            <Route path="reset-password" element={<ResetPasswordPage />} />
           </Route>
 
           {/* Client Routes - Protected */}
           <Route path="/client" element={
-            isAuthenticated && userRole === 'client' 
-              ? <DashboardLayout /> 
-              : <Navigate to="/auth/signin" />
+            <ProtectedRoute allowedRoles={['client']}>
+              <DashboardLayout />
+            </ProtectedRoute>
           }>
             <Route path="dashboard" element={<ClientDashboardPage />} />
             <Route path="create-case" element={<CreateCasePage />} />
@@ -82,13 +100,14 @@ function App() {
             <Route path="case/:id" element={<CaseDetailPage />} />
             <Route path="profile" element={<ProfilePage />} />
             <Route path="lawyer/:lawyerId" element={<LawyerProfilePage />} />
+            <Route path="settings" element={<SettingsPage />} />
           </Route>
 
           {/* Lawyer Routes - Protected */}
           <Route path="/lawyer" element={
-            isAuthenticated && userRole === 'lawyer' 
-              ? <DashboardLayout /> 
-              : <Navigate to="/auth/signin" />
+            <ProtectedRoute allowedRoles={['lawyer']}>
+              <DashboardLayout />
+            </ProtectedRoute>
           }>
             <Route path="dashboard" element={<LawyerDashboardPage />} />
             <Route path="available-cases" element={<AvailableCasesPage />} />
@@ -98,6 +117,7 @@ function App() {
             <Route path="case/:id" element={<CaseDetailPage />} />
             <Route path="profile" element={<ProfilePage />} />
             <Route path=":lawyerId" element={<LawyerProfilePage />} />
+            <Route path="settings" element={<SettingsPage />} />
           </Route>
 
           {/* Catch-all redirect to home */}

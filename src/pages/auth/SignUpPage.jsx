@@ -6,7 +6,10 @@ import { useForm, FormProvider, useFormContext } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { account, databases } from '../../lib/appwrite'
-import { AppwriteException } from 'appwrite'
+import { AppwriteException, ID } from 'appwrite'
+import Alert from '../../components/common/Alert'
+import { useDispatch } from 'react-redux'
+import { setUser, clearUser } from '../../store/authSlice'
 
 // Define Zod Schema for validation
 const baseSchema = z.object({
@@ -86,11 +89,16 @@ const RoleSelectionStep = ({
 }
 
 const BasicInfoStep = ({ nextStep, prevStep }) => {
-  const { register, handleSubmit, formState: { errors } } = useFormContext()
+  const { register, formState: { errors }, trigger } = useFormContext()
+  const [showPassword, setShowPassword] = useState(false)
 
-  const onSubmit = (data) => {
-    console.log("Basic Info Data Validated:", data)
-    nextStep()
+  const handleContinue = async () => {
+    const fieldsToValidate = ['firstName', 'lastName', 'email', 'password']
+    const isValid = await trigger(fieldsToValidate)
+    if (isValid) {
+      console.log("Basic Info Step Validated")
+      nextStep()
+    }
   }
 
   return (
@@ -100,13 +108,11 @@ const BasicInfoStep = ({ nextStep, prevStep }) => {
         <p className="text-gray-600 mt-2">Tell us a bit about yourself</p>
       </div>
 
-      {Object.keys(errors).length > 0 && !errors.barId && !errors.specializations && (
-        <div className="bg-red-50 text-red-600 p-3 rounded-md mb-6 text-sm">
-          {errors.firstName?.message || errors.lastName?.message || errors.email?.message || errors.password?.message || "Please fix the errors above"}
-        </div>
+      {Object.keys(errors).length > 0 && (errors.firstName || errors.lastName || errors.email || errors.password) && (
+        <Alert type="error" message={errors.firstName?.message || errors.lastName?.message || errors.email?.message || errors.password?.message || "Please fix the errors above"} />
       )}
 
-      <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+      <div className="space-y-4">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
             <label htmlFor="firstName" className="block text-sm font-medium text-gray-700 mb-1">
@@ -119,7 +125,6 @@ const BasicInfoStep = ({ nextStep, prevStep }) => {
               className={`input ${errors.firstName ? 'border-red-500' : ''}`}
               placeholder="John"
             />
-            {errors.firstName && <p className="text-red-500 text-xs mt-1">{errors.firstName.message}</p>}
           </div>
           <div>
             <label htmlFor="lastName" className="block text-sm font-medium text-gray-700 mb-1">
@@ -132,7 +137,6 @@ const BasicInfoStep = ({ nextStep, prevStep }) => {
               className={`input ${errors.lastName ? 'border-red-500' : ''}`}
               placeholder="Doe"
             />
-            {errors.lastName && <p className="text-red-500 text-xs mt-1">{errors.lastName.message}</p>}
           </div>
         </div>
         <div>
@@ -146,20 +150,27 @@ const BasicInfoStep = ({ nextStep, prevStep }) => {
             className={`input ${errors.email ? 'border-red-500' : ''}`}
             placeholder="john@example.com"
           />
-          {errors.email && <p className="text-red-500 text-xs mt-1">{errors.email.message}</p>}
         </div>
         <div>
           <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1">
             Password
           </label>
-          <input
-            id="password"
-            type="password"
-            {...register('password')}
-            className={`input ${errors.password ? 'border-red-500' : ''}`}
-            placeholder="••••••••"
-          />
-          {errors.password && <p className="text-red-500 text-xs mt-1">{errors.password.message}</p>}
+          <div className="relative">
+            <input
+              id="password"
+              type={showPassword ? 'text' : 'password'}
+              {...register('password')}
+              className={`input pr-10 ${errors.password ? 'border-red-500' : ''}`}
+              placeholder="••••••••"
+            />
+            <button
+              type="button"
+              onClick={() => setShowPassword(prev => !prev)}
+              className="absolute inset-y-0 right-3 flex items-center text-gray-600"
+            >
+              {showPassword ? '🙈' : '👁️'}
+            </button>
+          </div>
           <p className="text-xs text-gray-500 mt-1">
             Must be at least 8 characters
           </p>
@@ -168,17 +179,17 @@ const BasicInfoStep = ({ nextStep, prevStep }) => {
           <button type="button" onClick={prevStep} className="text-gray-600 hover:text-gray-900">
             Back
           </button>
-          <button type="submit" className="btn btn-primary py-2 px-6">
+          <button type="button" onClick={handleContinue} className="btn btn-primary py-2 px-6">
             Continue
           </button>
         </div>
-      </form>
+      </div>
     </div>
   )
 }
 
 const LawyerDetailsStep = ({ nextStep, prevStep }) => {
-  const { register, handleSubmit, formState: { errors }, watch, setValue } = useFormContext()
+  const { register, formState: { errors }, watch, setValue, trigger } = useFormContext()
   const specializationsList = [
     'Criminal Defense', 'Family Law', 'Corporate Law', 'Intellectual Property',
     'Immigration Law', 'Personal Injury', 'Tax Law', 'Employment Law',
@@ -193,9 +204,13 @@ const LawyerDetailsStep = ({ nextStep, prevStep }) => {
     setValue('specializations', updated, { shouldValidate: true, shouldDirty: true })
   }
 
-  const onSubmit = (data) => {
-    console.log("Lawyer Details Data Validated:", data)
-    nextStep()
+  const handleContinue = async () => {
+    const fieldsToValidate = ['barId', 'specializations']
+    const isValid = await trigger(fieldsToValidate)
+    if (isValid) {
+      console.log("Lawyer Details Step Validated")
+      nextStep()
+    }
   }
 
   return (
@@ -206,12 +221,10 @@ const LawyerDetailsStep = ({ nextStep, prevStep }) => {
       </div>
 
       {(errors.barId || errors.specializations) && (
-        <div className="bg-red-50 text-red-600 p-3 rounded-md mb-6 text-sm">
-          {errors.barId?.message || errors.specializations?.message || "Please fix the errors above"}
-        </div>
+        <Alert type="error" message={errors.barId?.message || errors.specializations?.message || "Please fix the errors above"} />
       )}
 
-      <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+      <div className="space-y-6">
         <div>
           <label htmlFor="barId" className="block text-sm font-medium text-gray-700 mb-1">
             Bar Association ID / Number
@@ -223,7 +236,7 @@ const LawyerDetailsStep = ({ nextStep, prevStep }) => {
             className={`input ${errors.barId ? 'border-red-500' : ''}`}
             placeholder="e.g., NY1234567"
           />
-          {errors.barId && <p className="text-red-500 text-xs mt-1">{errors.barId.message}</p>}
+          <p className="text-xs text-gray-500 mt-1">Your ID will be verified before you can apply to cases</p>
         </div>
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -245,13 +258,12 @@ const LawyerDetailsStep = ({ nextStep, prevStep }) => {
               </button>
             ))}
           </div>
-          {errors.specializations && <p className="text-red-500 text-xs mt-1">{errors.specializations.message}</p>}
         </div>
         <div className="flex items-center justify-between mt-6">
           <button type="button" onClick={prevStep} className="text-gray-600 hover:text-gray-900">Back</button>
-          <button type="submit" className="btn btn-primary py-2 px-6">Continue</button>
+          <button type="button" onClick={handleContinue} className="btn btn-primary py-2 px-6">Continue</button>
         </div>
-      </form>
+      </div>
     </div>
   )
 }
@@ -262,55 +274,36 @@ const ConfirmationStep = ({ role, prevStep, isLoading }) => {
   
   return (
     <div>
-      <div className="text-center mb-8">
-        <h2 className="text-xl font-semibold">Review Your Information</h2>
-        <p className="text-gray-600 mt-1">Please review your information before submitting</p>
+      <div className="text-center mb-6">
+        <h1 className="text-3xl font-bold text-gray-800">Confirm Details</h1>
+        <p className="text-gray-600 mt-2">Please review your information before creating your account.</p>
       </div>
-      
-      <div className="bg-white rounded-lg border border-gray-200 overflow-hidden mb-6">
-        <div className="px-6 py-4 border-b border-gray-200 bg-gray-50">
-          <h3 className="text-lg font-medium">Account Information</h3>
-        </div>
-        <div className="p-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div><p className="text-sm font-medium text-gray-500">First Name</p><p className="mt-1">{formData.firstName}</p></div>
-            <div><p className="text-sm font-medium text-gray-500">Last Name</p><p className="mt-1">{formData.lastName}</p></div>
-            <div><p className="text-sm font-medium text-gray-500">Email</p><p className="mt-1">{formData.email}</p></div>
-            <div><p className="text-sm font-medium text-gray-500">Account Type</p><p className="mt-1 capitalize">{role}</p></div>
-          </div>
-        </div>
+      <div className="bg-gray-50 p-4 rounded-md border border-gray-200 space-y-3 text-sm">
+        <p><strong>Role:</strong> <span className="capitalize">{role}</span></p>
+        <p><strong>Name:</strong> {formData.firstName} {formData.lastName}</p>
+        <p><strong>Email:</strong> {formData.email}</p>
+        {role === 'lawyer' && (
+          <>
+            <p><strong>Bar ID:</strong> {formData.barId}</p>
+            <p><strong>Specializations:</strong> {formData.specializations?.join(', ') || 'None selected'}</p>
+          </>
+        )}
       </div>
-      
-      {role === 'lawyer' && (
-        <div className="bg-white rounded-lg border border-gray-200 overflow-hidden mb-6">
-          <div className="px-6 py-4 border-b border-gray-200 bg-gray-50"><h3 className="text-lg font-medium">Lawyer Information</h3></div>
-          <div className="p-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div><p className="text-sm font-medium text-gray-500">Bar ID/License Number</p><p className="mt-1">{formData.barId}</p></div>
-              <div>
-                <p className="text-sm font-medium text-gray-500">Specializations</p>
-                <div className="mt-1 flex flex-wrap gap-1">
-                  {formData.specializations?.map((spec) => (
-                    <span key={spec} className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-primary/10 text-primary">
-                      {spec}
-                    </span>
-                  ))}
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-      
-      <div className="flex items-center justify-between">
-        <button type="button" onClick={prevStep} className="text-gray-600 hover:text-gray-900" disabled={isLoading}>Back</button>
-        <button type="submit" disabled={isLoading} className={`btn btn-primary py-2 px-6 ${isLoading ? 'opacity-70 cursor-not-allowed' : ''}`}>
+      <div className="flex items-center justify-between mt-6">
+        <button type="button" onClick={prevStep} className="text-gray-600 hover:text-gray-900" disabled={isLoading}>
+          Back
+        </button>
+        <button 
+          type="submit" 
+          className={`btn btn-primary py-2 px-6 ${isLoading ? 'opacity-70 cursor-not-allowed' : ''}`}
+          disabled={isLoading}
+        >
           {isLoading ? (
-            <div className="flex items-center">
-              <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
-              Creating Account...
-            </div>
-          ) : ( 'Create Account' )}
+             <div className="flex items-center justify-center">
+               <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+               Creating Account...
+             </div>
+           ) : 'Create Account'}
         </button>
       </div>
     </div>
@@ -319,105 +312,161 @@ const ConfirmationStep = ({ role, prevStep, isLoading }) => {
 
 const SignUpPage = () => {
   const navigate = useNavigate()
+  const dispatch = useDispatch()
   const [step, setStep] = useState(1)
   const [selectedRole, setSelectedRole] = useState(null)
   const [isLoading, setIsLoading] = useState(false)
   const [serverError, setServerError] = useState('')
 
   const currentSchema = selectedRole === 'lawyer' ? lawyerSchema : clientSchema
-
   const methods = useForm({
-    mode: 'onSubmit',
     resolver: zodResolver(currentSchema),
+    mode: 'onTouched', // Validate on blur
     defaultValues: {
       firstName: '',
       lastName: '',
       email: '',
       password: '',
+      // Lawyer specific
       barId: '',
       specializations: [],
     }
   })
 
-  useEffect(() => {
-    if (selectedRole === 'client') {
-      methods.resetField('barId')
-      methods.resetField('specializations')
-    }
-  }, [selectedRole, methods])
-
   const nextStep = () => setStep((prev) => prev + 1)
   const prevStep = () => setStep((prev) => prev - 1)
 
   const handleFinalSubmit = async (data) => {
-    setIsLoading(true)
     setServerError('')
-    console.log("Submitting Final Form Data:", data)
-    
-    if (!selectedRole) {
-      setServerError("Please select a role first.")
-      setStep(1)
+    setIsLoading(true)
+    console.log('Submitting final data:', data)
+
+    const DATABASE_ID = import.meta.env.VITE_APPWRITE_DATABASE_ID
+    const PROFILE_COLLECTION_ID = import.meta.env.VITE_APPWRITE_PROFILE_COLLECTION_ID
+    const LAWYER_DETAILS_COLLECTION_ID = import.meta.env.VITE_APPWRITE_LAWYER_DETAILS_COLLECTION_ID || '680ebc0b0032f06423db'
+    const CLIENT_DETAILS_COLLECTION_ID = import.meta.env.VITE_APPWRITE_CLIENT_DETAILS_COLLECTION_ID || '680ebbd4000f3c29edf1'
+
+    if (!DATABASE_ID || !PROFILE_COLLECTION_ID) {
+      setServerError("Appwrite Database/Collection IDs not configured in .env")
       setIsLoading(false)
       return
     }
 
+    let createdUser = null // Store created user to delete if profile creation fails
     try {
-      const name = `${data.firstName} ${data.lastName}`
-      const createdAccount = await account.create('unique()', data.email, data.password, name)
-      const userId = createdAccount.$id
-      
-      console.log('Appwrite account created:', userId)
+      // 1. Create Appwrite User Account
+      const userFullName = `${data.firstName} ${data.lastName}`.trim()
+      createdUser = await account.create(
+        ID.unique(), // Generate unique ID
+        data.email,
+        data.password,
+        userFullName
+      )
+      console.log('Appwrite user created:', createdUser)
 
-      const DATABASE_ID = import.meta.env.VITE_APPWRITE_DATABASE_ID
-      const PROFILE_COLLECTION_ID = import.meta.env.VITE_APPWRITE_PROFILE_COLLECTION_ID
-
-      if (!DATABASE_ID || !PROFILE_COLLECTION_ID) {
-        throw new Error("Appwrite Database/Collection IDs not configured in environment variables (VITE_APPWRITE_DATABASE_ID, VITE_APPWRITE_PROFILE_COLLECTION_ID)")
-      }
-
+      // 2. Create Profile Document in Database
       const profileData = {
-        userId: userId,
-        email: data.email,
+        userId: createdUser.$id,
+        role: selectedRole,
         firstName: data.firstName,
         lastName: data.lastName,
-        role: selectedRole,
-        ...(selectedRole === 'lawyer' && {
-          barId: data.barId,
-          specializations: data.specializations
-        }),
+        email: data.email,
+        phone: '',
+        address: '',
+        bio: '',
+        profileImage: ''
       }
 
       await databases.createDocument(
         DATABASE_ID,
         PROFILE_COLLECTION_ID,
-        userId,
+        createdUser.$id, // Use the user ID as the document ID for easy linking
         profileData
       )
-      console.log('User profile created in database.')
+      console.log('Profile document created.')
 
-      navigate('/login?signup=success')
+      // 2b. Create details document based on role
+      if (selectedRole === 'lawyer') {
+        const lawyerDetails = {
+          userId: createdUser.$id,
+          barId: data.barId,
+          specializations: data.specializations,
+          isVerified: false
+        }
+        await databases.createDocument(
+          DATABASE_ID,
+          LAWYER_DETAILS_COLLECTION_ID,
+          createdUser.$id,
+          lawyerDetails
+        )
+        console.log('Lawyer details document created.')
+      } else if (selectedRole === 'client') {
+        const clientDetails = { userId: createdUser.$id }
+        await databases.createDocument(
+          DATABASE_ID,
+          CLIENT_DETAILS_COLLECTION_ID,
+          createdUser.$id,
+          clientDetails
+        )
+        console.log('Client details document created.')
+      }
+
+      // 3. Create a session for the new user so we can send a verification email
+      await account.createEmailPasswordSession(data.email, data.password)
+      console.log('User session created for verification.');
+      // 4. Send Verification Email
+      // Use your frontend URL where the verification page will live
+      const verificationUrl = `${window.location.origin}/auth/verify-email`
+      console.log(`Requesting email verification with URL: ${verificationUrl}`)
+      await account.createVerification(verificationUrl)
+      console.log('Verification email request sent.')
+
+      // 5. Redirect to Check Email Page
+      // Optionally pass email in state to display on the check email page
+      navigate('/auth/check-email', { state: { email: data.email } })
+
+      // Optional: Login user immediately (requires authSlice/setUser)
+      // If implementing immediate login, ensure verification is still handled.
+      // Maybe show a banner "Please verify your email" in the dashboard.
+      // const session = await account.createEmailPasswordSession(data.email, data.password)
+      // const loggedInUserData = await account.get()
+      // const fullUserData = { ...loggedInUserData, profile: profileData } // Combine
+      // dispatch(setUser(fullUserData))
+      // navigate(`/${selectedRole}/dashboard`)
 
     } catch (error) {
-      console.error('Signup Process Failed:', error)
+      console.error('Signup failed:', error)
+      let errorMsg = 'An unexpected error occurred during signup.'
       if (error instanceof AppwriteException) {
-        if (error.code === 409) {
-          setServerError('An account with this email already exists. Please try logging in.')
-          methods.resetField('password')
-          setStep(2)
+        if (error.code === 409) { // Conflict - User already exists
+           errorMsg = 'An account with this email already exists. Please sign in.'
+        } else if (error.code === 400 && error.message.includes('Password')) {
+          errorMsg = 'Password is too weak. Please choose a stronger one.'
         } else {
-          setServerError(error.message || 'An error occurred during signup.')
+          errorMsg = error.message || 'Signup failed. Please try again.'
         }
-      } else {
-        setServerError('An unexpected error occurred. Please try again.')
+      } else if (error instanceof Error) {
+        errorMsg = error.message
       }
-      setStep(4)
+      setServerError(errorMsg)
+      
+      // Rollback: Delete user if profile creation failed (optional but good practice)
+      if (createdUser && error.message.includes('profile')) { // Check if error was during profile step
+        try {
+          await account.delete(createdUser.$id); 
+          console.log('Rolled back user creation due to profile error.')
+        } catch (deleteError) {
+          console.error('Failed to rollback user creation:', deleteError)
+          // Log this issue, as we might have an orphaned user account
+        }
+      }
+
     } finally {
       setIsLoading(false)
     }
   }
 
   const renderStep = () => {
-    const finalStepNumber = selectedRole === 'lawyer' ? 4 : 3
     switch (step) {
       case 1:
         return <RoleSelectionStep selectedRole={selectedRole} setSelectedRole={setSelectedRole} nextStep={nextStep} />
@@ -427,70 +476,51 @@ const SignUpPage = () => {
         if (selectedRole === 'lawyer') {
           return <LawyerDetailsStep nextStep={nextStep} prevStep={prevStep} />
         } else {
+          // If client has no extra step, skip to confirmation
           return <ConfirmationStep role={selectedRole} prevStep={prevStep} isLoading={isLoading} />
         }
-      case 4:
-        return <ConfirmationStep role={selectedRole} prevStep={prevStep} isLoading={isLoading} />
+      case 4: // Confirmation Step (only reached if lawyer step exists)
+         return <ConfirmationStep role={selectedRole} prevStep={prevStep} isLoading={isLoading} />
       default:
-        return <RoleSelectionStep selectedRole={selectedRole} setSelectedRole={setSelectedRole} nextStep={nextStep} />
+        return <div>Unknown Step</div>
     }
   }
-
-  const finalStepNumber = selectedRole === 'lawyer' ? 4 : 3
+  
+  // Determine which step is the final data input step before confirmation
+  const lastInputStep = selectedRole === 'lawyer' ? 3 : 2
+  // Determine which step is the confirmation step
+  const confirmationStepNumber = selectedRole === 'lawyer' ? 4 : 3
 
   return (
     <div className="max-w-md mx-auto p-4 md:p-8">
       <FormProvider {...methods}>
-        <form onSubmit={methods.handleSubmit(handleFinalSubmit)}>
-          <div className="mb-8">
-            <div className="flex items-center justify-between">
-              {[1, 2, 3, 4].map((stepNumber) => (
-                <div key={stepNumber} className="flex flex-col items-center flex-1">
-                  <div className={`w-8 h-8 rounded-full flex items-center justify-center ${ step >= stepNumber ? 'bg-primary text-white' : 'bg-gray-200 text-gray-500' }`}>
-                    {stepNumber}
-                  </div>
-                  <div className="text-xs mt-1 text-gray-500 text-center">
-                    {stepNumber === 1 && 'Role'}
-                    {stepNumber === 2 && 'Info'}
-                    {stepNumber === 3 && (selectedRole === 'lawyer' ? 'Details' : 'Confirm')}
-                    {stepNumber === 4 && 'Confirm'}
-                  </div>
-                </div>
-              ))}
-            </div>
-            
-            <div className="relative mt-1">
-              <div className="absolute left-0 right-0 top-1/2 h-0.5 bg-gray-200 -z-10"></div>
-              <div className={`absolute left-0 top-1/2 h-0.5 bg-primary transition-all duration-300`} style={{ width: `${((step > finalStepNumber ? finalStepNumber : step) - 1) / (finalStepNumber - 1) * 100}%` }}></div>
-            </div>
+        <motion.div
+          key={step} // Trigger animation on step change
+          initial={{ opacity: 0, x: 30 }}
+          animate={{ opacity: 1, x: 0 }}
+          exit={{ opacity: 0, x: -30 }}
+          transition={{ duration: 0.3 }}
+        >
+          {/* Display Server Errors */}
+          {serverError && <Alert type="error" message={serverError} onClose={() => setServerError('')} className="mb-4" />}
+          
+          {/* Use RHF handleSubmit for the final step */} 
+          <form onSubmit={methods.handleSubmit(handleFinalSubmit)}>
+            {renderStep()}
+            {/* Submit button is rendered within the ConfirmationStep */} 
+          </form>
+        </motion.div>
+        
+        {step > 1 && (
+          <div className="mt-8 text-center">
+            <p className="text-gray-600">
+              Already have an account?{' '}
+              <Link to="/auth/signin" className="text-primary font-medium hover:underline">
+                Sign in
+              </Link>
+            </p>
           </div>
-
-          {serverError && step === finalStepNumber && (
-            <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-6" role="alert">
-              <strong className="font-bold">Signup Failed: </strong>
-              <span className="block sm:inline">{serverError}</span>
-            </div>
-          )}
-
-          <AnimatePresence mode="wait">
-            <motion.div
-              key={step}
-              initial={{ opacity: 0, x: 20 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: -20 }}
-              transition={{ duration: 0.3 }}
-            >
-              {renderStep()}
-            </motion.div>
-          </AnimatePresence>
-
-          <div className="mt-8 text-center text-sm text-gray-600">
-            Already have an account?{' '}
-            <Link to="/login" className="font-medium text-primary hover:underline">
-              Sign In
-            </Link>
-          </div>
-        </form>
+        )}
       </FormProvider>
     </div>
   )

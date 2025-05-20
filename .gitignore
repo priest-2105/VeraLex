@@ -12,6 +12,13 @@ dist
 dist-ssr
 *.local
 
+
+# Ignore all scripts
+/scripts/
+
+.env*
+env
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
@@ -22,3 +29,13 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Secret files
+*.pem
+*.key
+
+# Appwrite attribute creation script
+scripts/createallattributes.js
+
+# Docusaurus cache and build directories
+.docusaurus
