@@ -1,32 +1,55 @@
 import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom'
 import { useState, useEffect, useRef } from 'react'
 import { motion } from 'framer-motion'
+import { useSelector, useDispatch } from 'react-redux'
+import { selectCurrentUser, clearUser } from '../store/authSlice'
+import { account } from '../lib/appwrite'
+import LogoutConfirmationModal from '../components/common/LogoutConfirmationModal'
+import defaultAvatar from '../assets/user_person_black.jpg'
 
 const DashboardLayout = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(true)
   const [dropdownOpen, setDropdownOpen] = useState(false)
   const [notificationsOpen, setNotificationsOpen] = useState(false)
+  const [isLogoutModalOpen, setIsLogoutModalOpen] = useState(false)
+  const [isLoggingOut, setIsLoggingOut] = useState(false)
   const location = useLocation()
   const navigate = useNavigate()
   const sidebarRef = useRef(null)
+  const dispatch = useDispatch()
   
-  // Mock user data - this would come from auth context in a real app
-  const mockUser = {
-    role: location.pathname.startsWith('/lawyer/') ? 'lawyer' : 'client',
-    name: 'Jane Doe',
-    email: 'jane@example.com',
-    avatar: 'https://randomuser.me/api/portraits/women/42.jpg'
-  }
+  // Get user data from Redux store
+  const currentUser = useSelector(selectCurrentUser)
+  // Extract user role from the embedded profile data
+  const userRole = currentUser?.profile?.role || 'client'
+  const userName = currentUser?.name || 'User'
+  const userAvatar = currentUser?.profile?.profileImage || defaultAvatar
   
   // Toggle sidebar on small screens
   const toggleSidebar = () => {
     setIsSidebarOpen(!isSidebarOpen)
   }
   
-  // Mock logout function
-  const handleLogout = () => {
-    // In a real app, you would clear auth state/tokens here
-    navigate('/auth/signin')
+  // --- Logout Logic ---
+  // Function to open the confirmation modal
+  const openLogoutModal = () => {
+    setDropdownOpen(false)
+    setIsLogoutModalOpen(true)
+  }
+
+  // Function to handle the actual logout after confirmation
+  const confirmLogout = async () => {
+    setIsLoggingOut(true)
+    try {
+      await account.deleteSession('current')
+      dispatch(clearUser())
+      setIsLogoutModalOpen(false)
+      navigate('/')
+    } catch (error) {
+      console.error("Logout failed:", error)
+    } finally {
+      setIsLoggingOut(false)
+    }
   }
 
   // Handle clicks outside the sidebar to close it on mobile
@@ -46,9 +69,9 @@ const DashboardLayout = () => {
     }
   }, [isSidebarOpen])
   
-  // Generate nav links based on user role
+  // Generate nav links based on user role from Redux state
   const getNavLinks = () => {
-    if (mockUser.role === 'lawyer') {
+    if (userRole === 'lawyer') {
       return [
         { name: 'Dashboard', path: '/lawyer/dashboard', dynamicpath: [], icon: 'M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6' },
         { name: 'Available Cases', path: '/lawyer/available-cases', dynamicpath: [], icon: 'M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01' },
@@ -62,7 +85,7 @@ const DashboardLayout = () => {
         { name: 'Dashboard', path: '/client/dashboard', dynamicpath: [], icon: 'M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6' },
         { name: 'Create Case', path: '/client/create-case', dynamicpath: [], icon: 'M12 6v6m0 0v6m0-6h6m-6 0H6' },
         { name: 'My Cases', path: '/client/my-cases', dynamicpath: ['/client/case/:id'], icon: 'M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2' },
-        { name: 'Find Lawyer', path: '/client/find-lawyer', dynamicpath: ['/client/lawyer/lawyer-5'], icon: 'M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z' },
+        { name: 'Find Lawyer', path: '/client/find-lawyer', dynamicpath: ['/client/lawyer/:lawyerId'], icon: 'M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z' },
         { name: 'Profile', path: '/client/profile', dynamicpath: [], icon: 'M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z' },
       ]
     }
@@ -75,7 +98,7 @@ const DashboardLayout = () => {
       {/* Mobile Backdrop - Only visible when sidebar is open on mobile */}
       {isSidebarOpen && (
         <div 
-          className="fixed inset-0 bg-[#00000021] bg-opacity-50 z-20 lg:hidden" 
+          className="fixed inset-0 bg-black bg-opacity-50 z-20 lg:hidden" 
           onClick={() => setIsSidebarOpen(false)}
         ></div>
       )}
@@ -95,7 +118,7 @@ const DashboardLayout = () => {
             </Link>
             <button 
               onClick={toggleSidebar}
-              className="md:hidden text-white hover:text-primary transition-colors"
+              className="lg:hidden text-white hover:text-primary transition-colors"
             >
               <svg
                 xmlns="http://www.w3.org/2000/svg"
@@ -118,14 +141,7 @@ const DashboardLayout = () => {
                 className={`flex items-center px-4 py-3 rounded-lg transition-colors ${
                   location.pathname === link.path || 
                   location.pathname.startsWith(link.path + '/') || 
-                  link.dynamicpath.some(path => {
-                    // Convert paths with parameters like '/client/case/:id' to regex patterns
-                    const pathPattern = path.replace(/:\w+/g, '[^/]+');
-                    const regex = new RegExp(`^${pathPattern.replace(/\//g, '\\/')}$`);
-                    console.log('Regex:', regex);
-                    console.log('Current Pathname:', location.pathname);
-                    return regex.test(location.pathname);
-                  })
+                  link.dynamicpath?.some(dp => new RegExp(`^${dp.replace(/:\w+/g, '[^/]+')}$`).test(location.pathname))
                     ? 'bg-primary text-white'
                     : 'text-white hover:bg-secondary-700'
                 }`}
@@ -144,21 +160,21 @@ const DashboardLayout = () => {
             ))}
           </nav>
           
-          {/* User Profile Summary */}
+          {/* User Profile Summary - Updated */}
           <div className="p-4 border-t border-secondary-700">
             <div className="flex items-center">
               <img
-                src={mockUser.avatar}
+                src={userAvatar}
                 alt="User avatar"
-                className="w-10 h-10 rounded-full mr-3"
+                className="w-10 h-10 rounded-full mr-3 bg-gray-300 object-contain" 
               />
-              <div className='text-start mr-auto'>
-                <div className="font-medium">{mockUser.name}</div>
-                <div className="text-xs text-gray-300 capitalize">{mockUser.role}</div>
+              <div className='text-left mr-auto'>
+                <div className="font-medium">{userName}</div>
+                <div className="text-xs text-gray-300 capitalize">{userRole}</div>
               </div>
             </div>
             <button
-              onClick={handleLogout}
+              onClick={openLogoutModal}
               className="mt-4 w-full flex items-center px-4 py-2 text-sm text-white rounded-lg hover:bg-secondary-700 transition-colors"
             >
               <svg
@@ -183,13 +199,15 @@ const DashboardLayout = () => {
 
       {/* Main Content Area */}
       <div className="flex flex-col flex-1 h-screen overflow-hidden">
-        {/* Header - Fixed */}
-        <header className="bg-white shadow-sm sticky top-0 z-20">
-          <div className="px-4 py-4 flex items-center justify-between">
+        {/* Header - Updated */}
+        <header className="bg-white shadow-sm sticky top-0 z-10">
+          <div className="px-4 sm:px-6 lg:px-8 py-4 flex items-center justify-between">
+            {/* Hamburger for mobile */}
             <button
               onClick={toggleSidebar}
-              className="text-gray-600  md:hidden"
+              className="text-gray-600 lg:hidden"
             >
+              <span className="sr-only">Open sidebar</span>
               <svg
                 xmlns="http://www.w3.org/2000/svg"
                 className="h-6 w-6"
@@ -197,16 +215,17 @@ const DashboardLayout = () => {
                 viewBox="0 0 24 24"
                 stroke="currentColor"
               >
-                {isSidebarOpen ? (
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                ) : (
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-                )}
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
               </svg>
             </button>
             
-            {/* Header Right */}
-            <div className="ml-auto md:space-x-5 space-x-2 flex items-center">
+            {/* Placeholder for potential Breadcrumbs or Title */}
+            <div className="hidden lg:block">
+              {/* Maybe display current page title here */}
+            </div>
+
+            {/* Header Right - Updated */}
+            <div className="ml-auto flex items-center space-x-4">
               {/* Notifications */}
               <div className="relative">
                 <button
@@ -216,6 +235,7 @@ const DashboardLayout = () => {
                   }}
                   className="p-1 rounded-full text-gray-600 hover:bg-gray-100 relative"
                 >
+                  <span className="sr-only">View notifications</span>
                   <svg
                     xmlns="http://www.w3.org/2000/svg"
                     className="h-6 w-6"
@@ -230,7 +250,7 @@ const DashboardLayout = () => {
                       d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"
                     />
                   </svg>
-                  <span className="absolute top-0 right-0 block h-2 w-2 rounded-full bg-red-500"></span>
+                  <span className="absolute top-0 right-0 block h-2 w-2 rounded-full bg-red-500 ring-2 ring-white"></span>
                 </button>
                 
                 {notificationsOpen && (
@@ -311,20 +331,20 @@ const DashboardLayout = () => {
                     setDropdownOpen(!dropdownOpen)
                     setNotificationsOpen(false)
                   }}
-                  className="flex items-center space-x-2 focus:outline-none"
+                  className="flex items-center space-x-2 focus:outline-none p-1 rounded-md hover:bg-gray-100"
                 >
                   <img
-                    src={mockUser.avatar}
+                    src={userAvatar}
                     alt="User avatar"
-                    className="w-8 h-8 rounded-full"
+                    className="w-8 h-8 rounded-full bg-gray-300 object-contain"
                   />
                   <div className="hidden md:block text-left">
-                    <div className="text-sm font-medium text-gray-700">{mockUser.name}</div>
-                    <div className="text-xs text-gray-500 capitalize">{mockUser.role}</div>
+                    <div className="text-sm font-medium text-gray-700">{userName}</div>
+                    <div className="text-xs text-gray-500 capitalize">{userRole}</div>
                   </div>
                   <svg
                     xmlns="http://www.w3.org/2000/svg"
-                    className="h-5 w-5 text-gray-400"
+                    className="h-5 w-5 text-gray-400 hidden md:block"
                     viewBox="0 0 20 20"
                     fill="currentColor"
                   >
@@ -340,23 +360,29 @@ const DashboardLayout = () => {
                   <motion.div
                     initial={{ opacity: 0, y: -10 }}
                     animate={{ opacity: 1, y: 0 }}
-                    className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 z-20"
+                    className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 z-20 ring-1 ring-black ring-opacity-5"
                   >
                     <Link
-                      to={mockUser.role === 'lawyer' ? '/lawyer/profile' : '/client/profile'}
+                      to={`/${userRole}/profile`}
                       className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
                     >
                       Your Profile
                     </Link>
                     <Link
-                      to={mockUser.role === 'lawyer' ? '/lawyer/dashboard' : '/client/dashboard'}
+                      to={`/${userRole}/dashboard`}
                       className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
                     >
                       Dashboard
                     </Link>
-                    <div className="border-t border-gray-100"></div>
+                    <Link
+                      to={`/${userRole}/settings`}
+                      className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                    >
+                      Settings
+                    </Link>
+                    <div className="border-t border-gray-100 my-1"></div>
                     <button
-                      onClick={handleLogout}
+                      onClick={openLogoutModal}
                       className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
                     >
                       Logout
@@ -369,10 +395,18 @@ const DashboardLayout = () => {
         </header>
         
         {/* Main Content - Scrollable */}
-        <main className="flex-1 overflow-y-auto p-6">
+        <main className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8">
           <Outlet />
         </main>
       </div>
+      
+      {/* Logout Confirmation Modal Render */}
+      <LogoutConfirmationModal 
+        isOpen={isLogoutModalOpen}
+        onClose={() => setIsLogoutModalOpen(false)}
+        onConfirm={confirmLogout}
+        isLoading={isLoggingOut}
+      />
     </div>
   )
 }
