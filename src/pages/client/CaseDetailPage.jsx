@@ -155,7 +155,7 @@ const CaseDetailPage = () => {
     }
 
     if (id) {
-      fetchCaseData()
+    fetchCaseData()
     }
   }, [id])
 
@@ -170,7 +170,7 @@ const CaseDetailPage = () => {
         text: newMessage.trim(),
         senderId: currentUser.$id,
         senderRole: currentUser.role,
-        timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString()
       })
 
       // Update case details with new message
@@ -188,12 +188,12 @@ const CaseDetailPage = () => {
 
       // Update local state
       setCaseDetails(prev => ({
-        ...prev,
+      ...prev,
         messages: updatedMessages,
         lastUpdated: new Date().toISOString()
-      }))
-      
-      setNewMessage('')
+    }))
+    
+    setNewMessage('')
     } catch (error) {
       console.error('Error sending message:', error)
       setError('Failed to send message')
@@ -348,9 +348,9 @@ const CaseDetailPage = () => {
         status: 'in_progress',
         updatedAt: new Date().toISOString()
       }))
-
-      // Switch to overview tab
-      setActiveTab('overview')
+    
+    // Switch to overview tab
+    setActiveTab('overview')
     } catch (error) {
       console.error('Error appointing lawyer:', error)
       setError('Failed to appoint lawyer')
@@ -383,8 +383,8 @@ const CaseDetailPage = () => {
       }))
 
       // Close modal
-      setIsApplyModalOpen(false)
-      setApplicationMessage('')
+    setIsApplyModalOpen(false)
+    setApplicationMessage('')
     } catch (error) {
       console.error('Error submitting application:', error)
       setError('Failed to submit application')
