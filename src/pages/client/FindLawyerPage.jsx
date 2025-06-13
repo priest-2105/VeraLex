@@ -1,90 +1,13 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { motion } from 'framer-motion'
+import { databases } from '../../lib/appwrite'
+import { Query } from 'appwrite'
+import Alert from '../../components/common/Alert'
 
-// Mock data for lawyers
-const mockLawyers = [
-  {
-    id: 'lawyer-1',
-    name: 'Sarah Johnson',
-    photo: 'https://randomuser.me/api/portraits/women/44.jpg',
-    specializations: ['Corporate Law', 'Contract Law'],
-    rating: 4.8,
-    reviewCount: 124,
-    yearsOfExperience: 12,
-    location: 'New York, NY',
-    hourlyRate: 250,
-    caseCount: 156,
-    bio: 'Former corporate counsel with extensive experience in contract negotiation and corporate governance.',
-    featured: true
-  },
-  {
-    id: 'lawyer-2',
-    name: 'Michael Chen',
-    photo: 'https://randomuser.me/api/portraits/men/22.jpg',
-    specializations: ['Intellectual Property', 'Technology Law'],
-    rating: 4.9,
-    reviewCount: 87,
-    yearsOfExperience: 8,
-    location: 'San Francisco, CA',
-    hourlyRate: 275,
-    caseCount: 93,
-    bio: 'Patent attorney with a background in software engineering, specializing in tech startups and IP protection.'
-  },
-  {
-    id: 'lawyer-3',
-    name: 'Jennifer Williams',
-    photo: 'https://randomuser.me/api/portraits/women/67.jpg',
-    specializations: ['Real Estate', 'Property Law'],
-    rating: 4.6,
-    reviewCount: 152,
-    yearsOfExperience: 15,
-    location: 'Chicago, IL',
-    hourlyRate: 225,
-    caseCount: 247,
-    bio: 'Experienced in all aspects of real estate law including transactions, disputes, and development projects.'
-  },
-  {
-    id: 'lawyer-4',
-    name: 'David Rodriguez',
-    photo: 'https://randomuser.me/api/portraits/men/54.jpg',
-    specializations: ['Family Law', 'Divorce'],
-    rating: 4.7,
-    reviewCount: 178,
-    yearsOfExperience: 20,
-    location: 'Miami, FL',
-    hourlyRate: 200,
-    caseCount: 312,
-    bio: 'Compassionate family lawyer dedicated to achieving the best outcomes for families during difficult transitions.'
-  },
-  {
-    id: 'lawyer-5',
-    name: 'Emily Patel',
-    photo: 'https://randomuser.me/api/portraits/women/47.jpg',
-    specializations: ['Employment Law', 'Labor Relations'],
-    rating: 4.9,
-    reviewCount: 64,
-    yearsOfExperience: 7,
-    location: 'Boston, MA',
-    hourlyRate: 235,
-    caseCount: 89,
-    bio: 'Former HR director turned employment attorney, with expertise in workplace disputes and policy compliance.',
-    featured: true
-  },
-  {
-    id: 'lawyer-6',
-    name: 'James Wilson',
-    photo: 'https://randomuser.me/api/portraits/men/39.jpg',
-    specializations: ['Criminal Defense', 'Civil Rights'],
-    rating: 4.5,
-    reviewCount: 203,
-    yearsOfExperience: 18,
-    location: 'Los Angeles, CA',
-    hourlyRate: 260,
-    caseCount: 278,
-    bio: 'Passionate advocate for justice with extensive trial experience in both state and federal courts.'
-  }
-]
+// Appwrite collection IDs
+const DATABASE_ID = import.meta.env.VITE_APPWRITE_DATABASE_ID
+const USERS_COLLECTION_ID = import.meta.env.VITE_APPWRITE_PROFILE_COLLECTION_ID
 
 // Available specializations for filter
 const specializations = [
@@ -114,7 +37,59 @@ const FindLawyerPage = () => {
   const [ratingFilter, setRatingFilter] = useState(0)
   const [experienceFilter, setExperienceFilter] = useState(0)
   const [sortBy, setSortBy] = useState('rating')
-  const [viewMode, setViewMode] = useState('grid') // 'grid' or 'list'
+  const [viewMode, setViewMode] = useState('grid')
+  const [lawyers, setLawyers] = useState([])
+  const [isLoading, setIsLoading] = useState(true)
+  const [error, setError] = useState('')
+
+  // Fetch lawyers from Appwrite
+  useEffect(() => {
+    const fetchLawyers = async () => {
+      setIsLoading(true)
+      setError('')
+      
+      try {
+        // Query only users with role 'lawyer'
+        const response = await databases.listDocuments(
+          DATABASE_ID,
+          USERS_COLLECTION_ID,
+          [
+            Query.equal('role', 'lawyer'),
+            Query.limit(100) 
+          ]
+        )
+
+        // Transform the data to match our UI needs
+        const transformedLawyers = response.documents.map(lawyer => ({
+          id: lawyer.$id,
+          name: `${lawyer.firstName} ${lawyer.lastName}`,
+          photo: lawyer.profileImage || null,
+          specializations: lawyer.specializations || [],
+          rating: lawyer.rating || 0,
+          reviewCount: lawyer.reviewCount || 0,
+          yearsOfExperience: lawyer.yearsOfExperience || 0,
+          location: lawyer.location || 'Location not specified',
+          hourlyRate: lawyer.hourlyRate || 0,
+          caseCount: lawyer.caseCount || 0,
+          bio: lawyer.bio || '',
+          featured: lawyer.featured || false,
+          email: lawyer.email,
+          phone: lawyer.phone,
+          barId: lawyer.barId,
+          isVerified: lawyer.isVerified || false
+        }))
+
+        setLawyers(transformedLawyers)
+      } catch (error) {
+        console.error('Error fetching lawyers:', error)
+        setError('Failed to load lawyers. Please try again later.')
+      } finally {
+        setIsLoading(false)
+      }
+    }
+
+    fetchLawyers()
+  }, [])
 
   // Toggle specialization in filter
   const toggleSpecialization = (specialization) => {
@@ -128,7 +103,7 @@ const FindLawyerPage = () => {
   }
 
   // Filter lawyers based on selected filters
-  const filteredLawyers = mockLawyers.filter(lawyer => {
+  const filteredLawyers = lawyers.filter(lawyer => {
     // Filter by search
     if (search && !lawyer.name.toLowerCase().includes(search.toLowerCase()) && 
         !lawyer.specializations.some(s => s.toLowerCase().includes(search.toLowerCase())) &&
@@ -172,6 +147,32 @@ const FindLawyerPage = () => {
         return 0
     }
   })
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <div className="w-16 h-16 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div className="bg-white rounded-lg shadow-md p-8">
+        <Alert 
+          type="error" 
+          message={error} 
+          className="mb-6"
+        />
+        <button
+          onClick={() => window.location.reload()}
+          className="btn btn-primary"
+        >
+          Try Again
+        </button>
+      </div>
+    )
+  }
 
   return (
     <div>
