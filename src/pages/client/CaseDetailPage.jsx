@@ -1,89 +1,17 @@
 import { useState, useEffect } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import { motion } from 'framer-motion'
+import { databases, storage } from '../../lib/appwrite'
+import { ID, Query } from 'appwrite'
+import { useSelector } from 'react-redux'
+import { selectCurrentUser } from '../../store/authSlice'
+import Alert from '../../components/common/Alert'
 
-// Mock data for a case
-const mockCase = {
-  id: 'case-123',
-  title: 'Contract Dispute with Software Vendor',
-  description: 'We entered into a software development agreement with TechCorp in January 2023. They have failed to deliver key features specified in our contract and missed multiple deadlines. We need legal representation to review our options for terminating the contract and potentially seeking damages for delays and incomplete work.',
-  status: 'pending',
-  type: 'Corporate Law',
-  role: 'plaintiff',
-  budget: 5000,
-  createdAt: '2023-05-15',
-  updatedAt: '2023-06-10',
-  deadline: '2023-08-30',
-  documents: [
-    { name: 'Original_Contract.pdf', size: '2.4 MB', uploadedAt: '2023-05-15' },
-    { name: 'Email_Correspondence.zip', size: '1.8 MB', uploadedAt: '2023-05-15' },
-    { name: 'Development_Timeline.xlsx', size: '0.5 MB', uploadedAt: '2023-05-20' }
-  ],
-  lawyer: null,
-  lawyerApplicants: [
-    {
-      id: 'lawyer-1',
-      name: 'Sarah Johnson',
-      photo: 'https://randomuser.me/api/portraits/women/44.jpg',
-      specializations: ['Corporate Law', 'Contract Law'],
-      rating: 4.8,
-      reviewCount: 124,
-      yearsOfExperience: 12,
-      location: 'New York, NY',
-      appliedAt: '2023-05-18',
-      proposedFee: '$3,500',
-      estimatedTime: '3 weeks',
-      coverLetter: 'I have extensive experience with contract disputes in the software industry and can help negotiate a resolution or pursue litigation if necessary. My background in technology law gives me insight into typical development contracts and timelines.'
-    },
-    {
-      id: 'lawyer-2',
-      name: 'Michael Chen',
-      photo: 'https://randomuser.me/api/portraits/men/22.jpg',
-      specializations: ['Intellectual Property', 'Contract Law'],
-      rating: 4.9,
-      reviewCount: 87,
-      yearsOfExperience: 8,
-      location: 'San Francisco, CA',
-      appliedAt: '2023-05-19',
-      proposedFee: '$3,800',
-      estimatedTime: '2-4 weeks',
-      coverLetter: 'Having worked with numerous tech companies on contract disputes, I understand the technical aspects involved. I can help review your agreement and develop a strategy for resolution, whether through negotiation or legal action.'
-    },
-    {
-      id: 'lawyer-3',
-      name: 'Jennifer Williams',
-      photo: 'https://randomuser.me/api/portraits/women/67.jpg',
-      specializations: ['Corporate Law', 'Business Litigation'],
-      rating: 4.7,
-      reviewCount: 92,
-      yearsOfExperience: 15,
-      location: 'Chicago, IL',
-      appliedAt: '2023-05-20',
-      proposedFee: '$4,200',
-      estimatedTime: '4 weeks',
-      coverLetter: 'My litigation experience would be valuable in this dispute. I can help analyze the contract, document the failures to perform, and prepare for potential litigation if needed, while also exploring settlement options.'
-    }
-  ],
-  timeline: [
-    { date: '2023-05-15', action: 'Case created', actor: 'Client' },
-    { date: '2023-05-18', action: 'Lawyer application received', actor: 'Sarah Johnson' },
-    { date: '2023-05-20', action: 'Lawyer assigned to case', actor: 'Client' },
-    { date: '2023-05-22', action: 'Initial consultation scheduled', actor: 'Sarah Johnson' },
-    { date: '2023-05-25', action: 'Initial consultation completed', actor: 'Sarah Johnson' },
-    { date: '2023-06-01', action: 'Cease and desist letter drafted', actor: 'Sarah Johnson' },
-    { date: '2023-06-05', action: 'Cease and desist letter approved', actor: 'Client' },
-    { date: '2023-06-08', action: 'Cease and desist letter sent to TechCorp', actor: 'Sarah Johnson' },
-    { date: '2023-06-10', action: 'Response received from TechCorp', actor: 'Sarah Johnson' },
-  ],
-  messages: [
-    { id: 1, sender: 'lawyer', text: 'Hello! I\'ve reviewed the documents you provided. We have a strong case based on the contract terms.', timestamp: '2023-05-21T14:30:00' },
-    { id: 2, sender: 'client', text: 'Thank you for taking a look. What do you think our next steps should be?', timestamp: '2023-05-21T15:45:00' },
-    { id: 3, sender: 'lawyer', text: 'I recommend we start with a formal cease and desist letter outlining the contract breaches. This often leads to negotiation without going to court.', timestamp: '2023-05-22T09:15:00' },
-    { id: 4, sender: 'client', text: 'That sounds like a good approach. How long will it take to prepare the letter?', timestamp: '2023-05-22T10:30:00' },
-    { id: 5, sender: 'lawyer', text: 'I can have a draft ready for your review by June 1st. Once you approve, we can send it immediately.', timestamp: '2023-05-22T11:05:00' },
-    { id: 6, sender: 'client', text: 'Perfect. Please proceed with drafting the letter.', timestamp: '2023-05-22T13:20:00' },
-  ]
-}
+// Appwrite collection IDs
+const DATABASE_ID = import.meta.env.VITE_APPWRITE_DATABASE_ID
+const CASES_COLLECTION_ID = import.meta.env.VITE_APPWRITE_CASES_COLLECTION_ID
+const CASE_DETAILS_COLLECTION_ID = import.meta.env.VITE_APPWRITE_CASE_DETAILS_COLLECTION_ID
+const CASE_DOCUMENTS_BUCKET_ID = import.meta.env.VITE_APPWRITE_CASE_DOCUMENTS_BUCKET_ID
 
 // Helper function to format date
 const formatDate = (dateString) => {
@@ -114,37 +42,103 @@ const getStatusBadge = (status) => {
   }
 }
 
+// Helper function to format file size
+const formatFileSize = (bytes) => {
+  if (bytes === 0) return '0 Bytes'
+  const k = 1024
+  const sizes = ['Bytes', 'KB', 'MB', 'GB']
+  const i = Math.floor(Math.log(bytes) / Math.log(k))
+  return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i]
+}
+
 const CaseDetailPage = () => {
   const { id } = useParams()
   const [activeTab, setActiveTab] = useState('overview')
   const [caseData, setCaseData] = useState(null)
+  const [caseDetails, setCaseDetails] = useState(null)
   const [isLoading, setIsLoading] = useState(true)
+  const [error, setError] = useState('')
   const [newMessage, setNewMessage] = useState('')
   const [isApplyModalOpen, setIsApplyModalOpen] = useState(false)
   const [applicationMessage, setApplicationMessage] = useState('')
+  const [documents, setDocuments] = useState([])
 
-  // Mock current user data (replace with actual auth context later)
-  const currentUser = {
-    role: 'lawyer', // Can be 'client' or 'lawyer'
-    id: 'lawyer-999' // Unique ID for the logged-in user
-  };
+  const currentUser = useSelector(selectCurrentUser)
 
-  // Simulate loading case data
+  // Fetch case data from Appwrite
   useEffect(() => {
     const fetchCaseData = async () => {
       setIsLoading(true)
+      setError('')
+      
       try {
-        // Simulate API call
-        await new Promise(resolve => setTimeout(resolve, 1000))
-        setCaseData(mockCase)
+        // 1. Fetch main case document
+        const mainCase = await databases.getDocument(
+          DATABASE_ID,
+          CASES_COLLECTION_ID,
+          id
+        )
+
+        // 2. Fetch case details document
+        const detailsQuery = await databases.listDocuments(
+          DATABASE_ID,
+          CASE_DETAILS_COLLECTION_ID,
+          [
+            Query.equal('caseId', id)
+          ]
+        )
+
+        const caseDetailsDoc = detailsQuery.documents[0]
+
+        // 3. Fetch document metadata if there are any documents
+        let documentMetadata = []
+        if (caseDetailsDoc?.documents?.length > 0) {
+          const filePromises = caseDetailsDoc.documents.map(async (fileId) => {
+            try {
+              const file = await storage.getFile(CASE_DOCUMENTS_BUCKET_ID, fileId)
+              const fileUrl = storage.getFileView(CASE_DOCUMENTS_BUCKET_ID, fileId)
+              return {
+                id: fileId,
+                name: file.name,
+                size: formatFileSize(file.size),
+                type: file.mimeType,
+                url: fileUrl,
+                uploadedAt: file.$createdAt
+              }
+            } catch (error) {
+              console.error(`Error fetching file ${fileId}:`, error)
+              return null
+            }
+          })
+          
+          documentMetadata = (await Promise.all(filePromises)).filter(Boolean)
+        }
+
+        // 4. Combine the data
+        setCaseData({
+          ...mainCase,
+          documents: documentMetadata,
+          deadline: caseDetailsDoc?.deadline,
+          lawyerId: caseDetailsDoc?.lawyerId,
+          applications: caseDetailsDoc?.applications || [],
+          notes: caseDetailsDoc?.notes || '',
+          lastUpdated: caseDetailsDoc?.lastUpdated
+        })
+        
+        setCaseDetails(caseDetailsDoc)
+        setDocuments(documentMetadata)
+
       } catch (error) {
         console.error('Error fetching case data:', error)
+        setError(error.message || 'Failed to load case data')
       } finally {
         setIsLoading(false)
       }
     }
 
-    fetchCaseData()
+    if (id) {
+      fetchCaseData()
+    }
   }, [id])
 
   const handleSendMessage = async (e) => {
@@ -152,53 +146,334 @@ const CaseDetailPage = () => {
     
     if (!newMessage.trim()) return
     
-    // Add new message to the list
-    const newMsg = {
-      id: caseData.messages.length + 1,
-      sender: 'client',
-      text: newMessage,
-      timestamp: new Date().toISOString()
-    }
-    
-    setCaseData(prev => ({
-      ...prev,
-      messages: [...prev.messages, newMsg]
-    }))
-    
-    setNewMessage('')
-  }
+    try {
+      const messageData = JSON.stringify({
+        id: ID.unique(),
+        text: newMessage.trim(),
+        senderId: currentUser.$id,
+        senderRole: currentUser.role,
+        timestamp: new Date().toISOString()
+      })
 
-  const handleAppointLawyer = (lawyerId) => {
-    // In real app, this would make an API call to appoint lawyer
-    console.log(`Appointing lawyer ${lawyerId} to case ${id}`)
-    
-    // For demo purposes, update the state
-    setCaseData(prev => {
-      const selectedLawyer = prev.lawyerApplicants.find(lawyer => lawyer.id === lawyerId)
-      return {
+      // Update case details with new message
+      const updatedMessages = [...(caseDetails.messages || []), messageData]
+      
+      await databases.updateDocument(
+        DATABASE_ID,
+        CASE_DETAILS_COLLECTION_ID,
+        caseDetails.$id,
+        {
+          messages: updatedMessages,
+          lastUpdated: new Date().toISOString()
+        }
+      )
+
+      // Update local state
+      setCaseDetails(prev => ({
         ...prev,
-        lawyer: selectedLawyer,
-        status: 'in_progress',
-        lawyerApplicants: []
-      }
-    })
-    
-    // Switch to overview tab
-    setActiveTab('overview')
+        messages: updatedMessages,
+        lastUpdated: new Date().toISOString()
+      }))
+      
+      setNewMessage('')
+    } catch (error) {
+      console.error('Error sending message:', error)
+      setError('Failed to send message')
+    }
   }
 
-  const handleApplySubmit = () => {
-    console.log('Sending application message:', applicationMessage)
-    // TODO: Implement API call to submit application
-    // Close modal after submission
-    setIsApplyModalOpen(false)
-    setApplicationMessage('')
+  const addTimelineEvent = async (action) => {
+    try {
+      const timelineEvent = JSON.stringify({
+        id: ID.unique(),
+        action,
+        actor: currentUser.$id,
+        actorRole: currentUser.role,
+        timestamp: new Date().toISOString()
+      })
+
+      const updatedTimeline = [...(caseDetails.timeline || []), timelineEvent]
+      
+      await databases.updateDocument(
+        DATABASE_ID,
+        CASE_DETAILS_COLLECTION_ID,
+        caseDetails.$id,
+        {
+          timeline: updatedTimeline,
+          lastUpdated: new Date().toISOString()
+        }
+      )
+
+      setCaseDetails(prev => ({
+        ...prev,
+        timeline: updatedTimeline,
+        lastUpdated: new Date().toISOString()
+      }))
+    } catch (error) {
+      console.error('Error adding timeline event:', error)
+      setError('Failed to update timeline')
+    }
+  }
+
+  // Update the messages display in the JSX
+  const renderMessages = () => {
+    if (!caseDetails?.messages?.length) {
+      return (
+        <div className="text-center py-10">
+          <svg xmlns="http://www.w3.org/2000/svg" className="h-10 w-10 mx-auto text-gray-400 mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+          </svg>
+          <p className="text-gray-500">No messages yet</p>
+        </div>
+      )
+    }
+
+    return caseDetails.messages.map((messageStr, index) => {
+      const message = JSON.parse(messageStr)
+      const isCurrentUser = message.senderId === currentUser.$id
+      
+      return (
+        <div 
+          key={message.id} 
+          className={`flex ${isCurrentUser ? 'justify-end' : 'justify-start'}`}
+        >
+          <div 
+            className={`max-w-[75%] rounded-lg p-3 ${
+              isCurrentUser 
+                ? 'bg-primary/10 text-gray-900' 
+                : 'bg-gray-100 text-gray-900'
+            }`}
+          >
+            <div className="text-sm">{message.text}</div>
+            <div className="text-xs text-gray-500 mt-1">
+              {formatTimestamp(message.timestamp)}
+              <span className="ml-2 capitalize">{message.senderRole}</span>
+            </div>
+          </div>
+        </div>
+      )
+    })
+  }
+
+  // Update the timeline display in the JSX
+  const renderTimeline = () => {
+    if (!caseDetails?.timeline?.length) {
+      return (
+        <div className="text-center py-10">
+          <p className="text-gray-500">No timeline events yet</p>
+        </div>
+      )
+    }
+
+    return (
+      <div className="relative pl-8 space-y-8 before:absolute before:inset-0 before:ml-5 before:w-0.5 before:bg-gradient-to-b before:from-primary before:via-primary before:to-gray-200">
+        {caseDetails.timeline.map((eventStr, index) => {
+          const event = JSON.parse(eventStr)
+          return (
+            <div key={event.id} className="relative">
+              <div className="absolute left-0 -translate-x-full transform -translate-y-1/2 w-4 h-4 rounded-full bg-primary"></div>
+              <div className="bg-white rounded-lg shadow-sm p-4">
+                <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center mb-2">
+                  <h3 className="text-base font-medium text-gray-900">{event.action}</h3>
+                  <time className="text-xs text-gray-500">{formatTimestamp(event.timestamp)}</time>
+                </div>
+                <p className="text-sm text-gray-600 capitalize">
+                  By {event.actorRole}
+                </p>
+              </div>
+            </div>
+          )
+        })}
+      </div>
+    )
+  }
+
+  const handleAppointLawyer = async (lawyerId) => {
+    try {
+      // Update case details with assigned lawyer
+      await databases.updateDocument(
+        DATABASE_ID,
+        CASE_DETAILS_COLLECTION_ID,
+        caseDetails.$id,
+        {
+          lawyerAssigned: lawyerId,
+          lawyerRequests: caseDetails.lawyerRequests.filter(id => id !== lawyerId),
+          lastUpdated: new Date().toISOString()
+        }
+      )
+
+      // Add timeline event
+      await addTimelineEvent(`Lawyer ${lawyerId} was assigned to the case`)
+
+      // Update local state
+      setCaseDetails(prev => ({
+        ...prev,
+        lawyerAssigned: lawyerId,
+        lawyerRequests: prev.lawyerRequests.filter(id => id !== lawyerId),
+        lastUpdated: new Date().toISOString()
+      }))
+
+      // Update case status
+      await databases.updateDocument(
+        DATABASE_ID,
+        CASES_COLLECTION_ID,
+        id,
+        {
+          status: 'in_progress',
+          updatedAt: new Date().toISOString()
+        }
+      )
+
+      // Update local case data
+      setCaseData(prev => ({
+        ...prev,
+        status: 'in_progress',
+        updatedAt: new Date().toISOString()
+      }))
+
+      // Switch to overview tab
+      setActiveTab('overview')
+    } catch (error) {
+      console.error('Error appointing lawyer:', error)
+      setError('Failed to appoint lawyer')
+    }
+  }
+
+  const handleApplySubmit = async () => {
+    try {
+      // Add lawyer to requests array
+      const updatedRequests = [...(caseDetails.lawyerRequests || []), currentUser.$id]
+      
+      await databases.updateDocument(
+        DATABASE_ID,
+        CASE_DETAILS_COLLECTION_ID,
+        caseDetails.$id,
+        {
+          lawyerRequests: updatedRequests,
+          lastUpdated: new Date().toISOString()
+        }
+      )
+
+      // Add timeline event
+      await addTimelineEvent(`Lawyer ${currentUser.$id} requested to join the case`)
+
+      // Update local state
+      setCaseDetails(prev => ({
+        ...prev,
+        lawyerRequests: updatedRequests,
+        lastUpdated: new Date().toISOString()
+      }))
+
+      // Close modal
+      setIsApplyModalOpen(false)
+      setApplicationMessage('')
+    } catch (error) {
+      console.error('Error submitting application:', error)
+      setError('Failed to submit application')
+    }
+  }
+
+  // Update the messages tab to show disabled state when no lawyer is assigned
+  const renderMessagesTab = () => {
+    const isLawyerAssigned = Boolean(caseDetails?.lawyerAssigned)
+    
+    return (
+      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
+        <h2 className="text-lg font-semibold mb-4">Messages</h2>
+        {!isLawyerAssigned ? (
+          <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-6 text-center">
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-12 w-12 mx-auto text-yellow-400 mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+            </svg>
+            <h3 className="text-lg font-medium text-yellow-800 mb-2">Messages Unavailable</h3>
+            <p className="text-yellow-700">
+              Messages will be available once a lawyer is assigned to your case.
+            </p>
+          </div>
+        ) : (
+          <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
+            <div className="max-h-96 overflow-y-auto p-4 space-y-4">
+              {renderMessages()}
+            </div>
+            <div className="border-t border-gray-200 p-4">
+              <form onSubmit={handleSendMessage} className="flex">
+                <input
+                  type="text"
+                  value={newMessage}
+                  onChange={(e) => setNewMessage(e.target.value)}
+                  className="input flex-grow mr-2"
+                  placeholder="Type your message..."
+                  disabled={!isLawyerAssigned}
+                />
+                <button 
+                  type="submit"
+                  className="btn btn-primary flex-shrink-0"
+                  disabled={!newMessage.trim() || !isLawyerAssigned}
+                >
+                  Send
+                </button>
+              </form>
+            </div>
+          </div>
+        )}
+      </motion.div>
+    )
+  }
+
+  // Update the applicants tab to show lawyer requests
+  const renderApplicantsTab = () => {
+    if (!caseDetails?.lawyerRequests?.length) {
+      return (
+        <div className="text-center py-10">
+          <p className="text-gray-500">No lawyer requests yet</p>
+        </div>
+      )
+    }
+
+    return (
+      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
+        <h2 className="text-lg font-semibold mb-4">Lawyer Requests</h2>
+        <div className="space-y-6">
+          {caseDetails.lawyerRequests.map((lawyerId) => (
+            <div key={lawyerId} className="bg-white border border-gray-200 rounded-lg p-6">
+              <div className="flex justify-between items-center">
+                <div>
+                  <h3 className="text-lg font-medium">Lawyer ID: {lawyerId}</h3>
+                  {/* Here you would typically fetch and display more lawyer details */}
+                </div>
+                <button 
+                  onClick={() => handleAppointLawyer(lawyerId)}
+                  className="btn btn-primary"
+                >
+                  Appoint Lawyer
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      </motion.div>
+    )
   }
 
   if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
         <div className="w-16 h-16 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div className="bg-white rounded-lg shadow-md p-8 text-center">
+        <Alert 
+          type="error" 
+          message={error} 
+          className="mb-6"
+        />
+        <Link to="/client/my-cases" className="btn btn-primary">
+          View All Cases
+        </Link>
       </div>
     )
   }
@@ -559,97 +834,11 @@ const CaseDetailPage = () => {
         {activeTab === 'timeline' && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
             <h2 className="text-lg font-semibold mb-6">Case Timeline</h2>
-            
-            <div className="relative pl-8 space-y-8 before:absolute before:inset-0 before:ml-5 before:w-0.5 before:bg-gradient-to-b before:from-primary before:via-primary before:to-gray-200">
-              {caseData.timeline.map((item, index) => (
-                <div key={index} className="relative">
-                  <div className="absolute left-0 -translate-x-full transform -translate-y-1/2 w-4 h-4 rounded-full bg-primary"></div>
-                  <div className="bg-white rounded-lg shadow-sm p-4">
-                    <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center mb-2">
-                      <h3 className="text-base font-medium text-gray-900">{item.action}</h3>
-                      <time className="text-xs text-gray-500">{formatDate(item.date)}</time>
-                    </div>
-                    <p className="text-sm text-gray-600">By {item.actor}</p>
-                  </div>
-                </div>
-              ))}
-              
-              {/* Starting point */}
-              <div className="relative">
-                <div className="absolute left-0 -translate-x-full transform -translate-y-1/2 w-4 h-4 rounded-full bg-primary"></div>
-                <div className="bg-white rounded-lg shadow-sm p-4 border border-gray-200">
-                  <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center mb-2">
-                    <h3 className="text-base font-medium text-gray-900">Case Created</h3>
-                    <time className="text-xs text-gray-500">{formatDate(caseData.createdAt)}</time>
-                  </div>
-                  <p className="text-sm text-gray-600">Case was created and posted to the marketplace</p>
-                </div>
-              </div>
-            </div>
+            {renderTimeline()}
           </motion.div>
         )}
 
-        {activeTab === 'messages' && (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
-            <h2 className="text-lg font-semibold mb-4">Messages</h2>
-            
-            <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
-              {/* Messages List */}
-              <div className="max-h-96 overflow-y-auto p-4 space-y-4">
-                {caseData.messages.length > 0 ? (
-                  caseData.messages.map((message) => (
-                    <div 
-                      key={message.id} 
-                      className={`flex ${message.sender === 'client' ? 'justify-end' : 'justify-start'}`}
-                    >
-                      <div 
-                        className={`max-w-[75%] rounded-lg p-3 ${
-                          message.sender === 'client' 
-                            ? 'bg-primary/10 text-gray-900' 
-                            : 'bg-gray-100 text-gray-900'
-                        }`}
-                      >
-                        <div className="text-sm">{message.text}</div>
-                        <div className="text-xs text-gray-500 mt-1">
-                          {formatTimestamp(message.timestamp)}
-                        </div>
-                      </div>
-                    </div>
-                  ))
-                ) : (
-                  <div className="text-center py-10">
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-10 w-10 mx-auto text-gray-400 mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
-                    </svg>
-                    <p className="text-gray-500">No messages yet</p>
-                  </div>
-                )}
-              </div>
-              
-              {/* Message Input */}
-              <div className="border-t border-gray-200 p-4">
-                <form onSubmit={handleSendMessage} className="flex">
-                  <input
-                    type="text"
-                    value={newMessage}
-                    onChange={(e) => setNewMessage(e.target.value)}
-                    className="input flex-grow mr-2"
-                    placeholder="Type your message..."
-                  />
-                  <button 
-                    type="submit"
-                    className="btn btn-primary flex-shrink-0"
-                    disabled={!newMessage.trim()}
-                  >
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
-                    </svg>
-                  </button>
-                </form>
-              </div>
-            </div>
-          </motion.div>
-        )}
+        {activeTab === 'messages' && renderMessagesTab()}
       </div>
 
       {/* Apply to Case Modal */}

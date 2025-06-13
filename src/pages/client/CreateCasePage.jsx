@@ -51,6 +51,8 @@ const CreateCasePage = () => {
         throw new Error('You must be logged in to create a case')
       }
 
+      const now = new Date().toISOString()
+
       // 1. Upload documents if any
       const uploadedDocumentIds = []
       if (formData.documents.length > 0) {
@@ -61,12 +63,9 @@ const CreateCasePage = () => {
             fileId,
             file
           )
-          // Store only the file ID as a string
           uploadedDocumentIds.push(fileId)
         }
       }
-
-      const now = new Date().toISOString()
 
       // 2. Create main case document
       const caseData = {
@@ -88,15 +87,28 @@ const CreateCasePage = () => {
         caseData
       )
 
-      // 3. Create case details document
+      // Create initial timeline event
+      const initialTimelineEvent = JSON.stringify({
+        id: ID.unique(),
+        action: 'Case created',
+        actor: currentUser.$id,
+        actorRole: 'client',
+        timestamp: now
+      })
+
+      // 3. Create case details document with timeline and messages
       const caseDetailsData = {
         caseId: createdCase.$id,
         deadline: formData.deadline,
-        documents: uploadedDocumentIds, // Now storing array of file IDs as strings
+        documents: uploadedDocumentIds,
         lawyerId: null,
+        lawyerAssigned: null,
+        lawyerRequests: [],
         applications: [],
         notes: '',
-        lastUpdated: now
+        lastUpdated: now,
+        timeline: [initialTimelineEvent], // Initialize with case creation event
+        messages: [] // Initialize empty messages array
       }
 
       await databases.createDocument(
