@@ -1,6 +1,17 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
+import { useSelector } from 'react-redux'
+import { databases, storage } from '../../lib/appwrite'
+import { ID } from 'appwrite'
+import { selectCurrentUser } from '../../store/authSlice'
+import Alert from '../../components/common/Alert'
+
+// Appwrite collection IDs
+const DATABASE_ID = import.meta.env.VITE_APPWRITE_DATABASE_ID
+const CASES_COLLECTION_ID = import.meta.env.VITE_APPWRITE_CASES_COLLECTION_ID
+const CASE_DETAILS_COLLECTION_ID = import.meta.env.VITE_APPWRITE_CASE_DETAILS_COLLECTION_ID
+const CASE_DOCUMENTS_BUCKET_ID = import.meta.env.VITE_APPWRITE_CASE_DOCUMENTS_BUCKET_ID
 
 const CreateCasePage = () => {
   const [step, setStep] = useState(1)
@@ -14,7 +25,9 @@ const CreateCasePage = () => {
     deadline: ''
   })
   const [isLoading, setIsLoading] = useState(false)
+  const [serverError, setServerError] = useState('')
   const navigate = useNavigate()
+  const currentUser = useSelector(selectCurrentUser)
 
   const handleChange = (e) => {
     const { name, value } = e.target
@@ -30,17 +43,74 @@ const CreateCasePage = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault()
+    setServerError('')
     setIsLoading(true)
     
     try {
-      // Here you would implement actual case creation logic
-      // For now we'll just simulate a successful submission after a delay
-      await new Promise(resolve => setTimeout(resolve, 1500))
-      
-      // Redirect to the case detail page with a mock ID
-      navigate('/client/case/case-123')
-    } catch (err) {
-      console.error('Error creating case:', err)
+      if (!currentUser?.$id) {
+        throw new Error('You must be logged in to create a case')
+      }
+
+      // 1. Upload documents if any
+      const uploadedDocumentIds = []
+      if (formData.documents.length > 0) {
+        for (const file of formData.documents) {
+          const fileId = ID.unique()
+          await storage.createFile(
+            CASE_DOCUMENTS_BUCKET_ID,
+            fileId,
+            file
+          )
+          // Store only the file ID as a string
+          uploadedDocumentIds.push(fileId)
+        }
+      }
+
+      const now = new Date().toISOString()
+
+      // 2. Create main case document
+      const caseData = {
+        userId: currentUser.$id,
+        title: formData.title,
+        description: formData.description,
+        caseType: formData.caseType,
+        role: formData.role,
+        budget: parseFloat(formData.budget),
+        status: 'pending',
+        createdAt: now,
+        updatedAt: now
+      }
+
+      const createdCase = await databases.createDocument(
+        DATABASE_ID,
+        CASES_COLLECTION_ID,
+        ID.unique(),
+        caseData
+      )
+
+      // 3. Create case details document
+      const caseDetailsData = {
+        caseId: createdCase.$id,
+        deadline: formData.deadline,
+        documents: uploadedDocumentIds, // Now storing array of file IDs as strings
+        lawyerId: null,
+        applications: [],
+        notes: '',
+        lastUpdated: now
+      }
+
+      await databases.createDocument(
+        DATABASE_ID,
+        CASE_DETAILS_COLLECTION_ID,
+        ID.unique(),
+        caseDetailsData
+      )
+
+      // 4. Redirect to the case detail page
+      navigate(`/client/case/${createdCase.$id}`)
+    } catch (error) {
+      console.error('Error creating case:', error)
+      setServerError(error.message || 'Failed to create case. Please try again.')
     } finally {
       setIsLoading(false)
     }
@@ -64,6 +134,16 @@ const CreateCasePage = () => {
     <div className="max-w-3xl mx-auto">
       <h1 className="text-2xl font-bold text-gray-900 mb-6">Create a New Case</h1>
       
+      {/* Server Error Alert */}
+      {serverError && (
+        <Alert 
+          type="error" 
+          message={serverError} 
+          onClose={() => setServerError('')} 
+          className="mb-6"
+        />
+      )}
+
       {/* Progress Steps */}
       <div className="mb-8">
         <div className="flex items-center justify-between">
