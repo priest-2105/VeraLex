@@ -12,6 +12,7 @@ const DATABASE_ID = import.meta.env.VITE_APPWRITE_DATABASE_ID
 const CASES_COLLECTION_ID = import.meta.env.VITE_APPWRITE_CASES_COLLECTION_ID
 const CASE_DETAILS_COLLECTION_ID = import.meta.env.VITE_APPWRITE_CASE_DETAILS_COLLECTION_ID
 const CASE_DOCUMENTS_BUCKET_ID = import.meta.env.VITE_APPWRITE_CASE_DOCUMENTS_BUCKET_ID
+const USERS_COLLECTION_ID = import.meta.env.VITE_APPWRITE_USERS_COLLECTION_ID
 
 // Helper function to format date
 const formatDate = (dateString) => {
@@ -62,6 +63,7 @@ const CaseDetailPage = () => {
   const [isApplyModalOpen, setIsApplyModalOpen] = useState(false)
   const [applicationMessage, setApplicationMessage] = useState('')
   const [documents, setDocuments] = useState([])
+  const [assignedLawyer, setAssignedLawyer] = useState(null)
 
   const currentUser = useSelector(selectCurrentUser)
 
@@ -90,7 +92,22 @@ const CaseDetailPage = () => {
 
         const caseDetailsDoc = detailsQuery.documents[0]
 
-        // 3. Fetch document metadata if there are any documents
+        // 3. If there's an assigned lawyer, fetch their details
+        if (caseDetailsDoc?.lawyerAssigned) {
+          try {
+            const lawyerDoc = await databases.getDocument(
+              DATABASE_ID,
+              USERS_COLLECTION_ID,
+              caseDetailsDoc.lawyerAssigned
+            )
+            setAssignedLawyer(lawyerDoc)
+          } catch (error) {
+            console.error('Error fetching lawyer details:', error)
+            // Don't set error state here, just log it
+          }
+        }
+
+        // 4. Fetch document metadata if there are any documents
         let documentMetadata = []
         if (caseDetailsDoc?.documents?.length > 0) {
           const filePromises = caseDetailsDoc.documents.map(async (fileId) => {
@@ -114,12 +131,13 @@ const CaseDetailPage = () => {
           documentMetadata = (await Promise.all(filePromises)).filter(Boolean)
         }
 
-        // 4. Combine the data
+        // 5. Combine the data
         setCaseData({
           ...mainCase,
           documents: documentMetadata,
           deadline: caseDetailsDoc?.deadline,
           lawyerId: caseDetailsDoc?.lawyerId,
+          lawyerAssigned: caseDetailsDoc?.lawyerAssigned,
           applications: caseDetailsDoc?.applications || [],
           notes: caseDetailsDoc?.notes || '',
           lastUpdated: caseDetailsDoc?.lastUpdated
@@ -455,6 +473,68 @@ const CaseDetailPage = () => {
     )
   }
 
+  // Add a new component to render the assigned lawyer card
+  const renderAssignedLawyerCard = () => {
+    if (!caseDetails?.lawyerAssigned || !assignedLawyer) {
+      return null
+    }
+
+    return (
+      <div className="bg-white border border-gray-200 rounded-lg p-6 mb-6">
+        <h3 className="text-lg font-medium mb-4">Assigned Lawyer</h3>
+        <div className="flex items-start space-x-4">
+          {assignedLawyer.profileImage ? (
+            <img 
+              src={assignedLawyer.profileImage} 
+              alt={`${assignedLawyer.firstName} ${assignedLawyer.lastName}`}
+              className="w-16 h-16 rounded-full object-cover"
+            />
+          ) : (
+            <div className="w-16 h-16 rounded-full bg-gray-200 flex items-center justify-center">
+              <span className="text-2xl text-gray-500">
+                {assignedLawyer.firstName?.[0]}{assignedLawyer.lastName?.[0]}
+              </span>
+            </div>
+          )}
+          <div className="flex-1">
+            <div className="flex justify-between items-start">
+              <div>
+                <h4 className="text-lg font-semibold text-gray-900">
+                  {assignedLawyer.firstName} {assignedLawyer.lastName}
+                </h4>
+                <p className="text-sm text-gray-600">{assignedLawyer.email}</p>
+                {assignedLawyer.phone && (
+                  <p className="text-sm text-gray-600">{assignedLawyer.phone}</p>
+                )}
+              </div>
+              {currentUser.role === 'client' && (
+                <button 
+                  onClick={() => {/* TODO: Implement remove lawyer functionality */}}
+                  className="btn btn-sm btn-outline text-red-600 hover:bg-red-50"
+                >
+                  Remove Lawyer
+                </button>
+              )}
+            </div>
+            {assignedLawyer.bio && (
+              <p className="mt-2 text-sm text-gray-600">{assignedLawyer.bio}</p>
+            )}
+            <div className="mt-3 flex flex-wrap gap-2">
+              {assignedLawyer.specializations?.map((spec, index) => (
+                <span 
+                  key={index}
+                  className="px-2 py-1 bg-primary/10 text-primary text-xs font-medium rounded"
+                >
+                  {spec}
+                </span>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
@@ -605,6 +685,9 @@ const CaseDetailPage = () => {
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
             <h2 className="text-xl font-semibold mb-4">Case Details</h2>
             <p className="text-gray-700 mb-6 whitespace-pre-wrap">{caseData.description}</p>
+            
+            {/* Add the assigned lawyer card */}
+            {renderAssignedLawyerCard()}
             
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
               <div>
