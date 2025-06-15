@@ -61,7 +61,8 @@ const DashboardPage = () => {
           CASES_COLLECTION_ID,
           [
             Query.equal('userId', currentUser.$id),
-            Query.orderDesc('createdAt')
+            Query.orderDesc('createdAt'),
+            Query.limit(3) // Only get 3 most recent cases
           ]
         )
 
@@ -80,10 +81,7 @@ const DashboardPage = () => {
           caseItem.status === 'closed'
         ).length
 
-        // Get only the 5 most recent cases for display
-        const recentCases = casesData.slice(0, 5)
-
-        setCases(recentCases)
+        setCases(casesData) // No need to slice since we're already limiting to 3
         setStats({
           activeCases,
           pendingCases,
@@ -237,7 +235,7 @@ const DashboardPage = () => {
             </Link>
           </div>
         ) : (
-          <div className="space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             {cases.map((caseItem, index) => (
               <motion.div
                 key={caseItem.$id}
@@ -246,33 +244,30 @@ const DashboardPage = () => {
                 transition={{ duration: 0.3, delay: index * 0.1 }}
                 className="card bg-white"
               >
-                <div className="flex flex-col md:flex-row md:items-center justify-between">
-                  <div className="mb-4 md:mb-0">
-                    <div className="flex items-center mb-2">
-                      {getStatusBadge(caseItem.status || 'pending')}
-                      <span className="text-xs text-gray-500 ml-2">
-                        Created {formatDate(caseItem.createdAt)}
-                      </span>
-                    </div>
-                    <Link 
-                      to={`/client/case/${caseItem.$id}`} 
-                      className="text-lg font-medium text-gray-900 hover:text-primary mb-1 block"
-                    >
-                      {caseItem.title}
-                    </Link>
-                    <div className="text-sm text-gray-500">{caseItem.caseType}</div>
-                    <div className="text-sm text-gray-500 mt-1">
-                      Budget: ${caseItem.budget?.toLocaleString() || 'Not specified'}
-                    </div>
+                <div className="flex flex-col h-full">
+                  <div className="flex items-center mb-3">
+                    {getStatusBadge(caseItem.status || 'pending')}
+                    <span className="text-xs text-gray-500 ml-2">
+                      {formatDate(caseItem.createdAt)}
+                    </span>
                   </div>
-
-                  <div className="flex items-center space-x-4">
-                    <div className="text-right">
+                  <Link 
+                    to={`/client/case/${caseItem.$id}`} 
+                    className="text-lg font-medium text-gray-900 hover:text-primary mb-2 block"
+                  >
+                    {caseItem.title}
+                  </Link>
+                  <div className="text-sm text-gray-500 mb-2">{caseItem.caseType}</div>
+                  <div className="text-sm text-gray-500 mb-4">
+                    Budget: ${caseItem.budget?.toLocaleString() || 'Not specified'}
+                  </div>
+                  <div className="mt-auto pt-4 border-t border-gray-100">
+                    <div className="flex justify-between items-center">
                       <div className="text-sm font-medium text-gray-700">
                         {caseItem.role === 'client' ? 'Client Case' : 'Lawyer Case'}
                       </div>
                       <div className="text-xs text-gray-500">
-                        Last updated {formatDate(caseItem.updatedAt)}
+                        Updated {formatDate(caseItem.updatedAt)}
                       </div>
                     </div>
                   </div>
