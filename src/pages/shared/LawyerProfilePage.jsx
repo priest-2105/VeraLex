@@ -315,7 +315,16 @@ const LawyerProfilePage = () => {
           {activeTab === 'about' && (
             <div>
               <h2 className="text-xl font-semibold mb-4">About {lawyer?.name}</h2>
-              <p className="text-gray-700 mb-6 leading-relaxed">{lawyer?.bio || 'No bio available'}</p>
+              {lawyer?.bio ? (
+                <p className="text-gray-700 mb-6 leading-relaxed">{lawyer.bio}</p>
+              ) : (
+                <div className="bg-gray-50 rounded-lg p-6 text-center mb-6">
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-12 w-12 mx-auto text-gray-400 mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                  </svg>
+                  <p className="text-gray-500">No bio available yet.</p>
+                </div>
+              )}
               
               {/* Professional Summary */}
               <div className="bg-gray-50 rounded-lg p-4 mb-6">
@@ -346,7 +355,7 @@ const LawyerProfilePage = () => {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <p className="text-gray-600">Email</p>
-                    <p className="font-medium">{lawyer?.email}</p>
+                    <p className="font-medium">{lawyer?.email || 'Not provided'}</p>
                   </div>
                   <div>
                     <p className="text-gray-600">Phone</p>
@@ -368,25 +377,32 @@ const LawyerProfilePage = () => {
           {activeTab === 'practice' && (
             <div>
               <h2 className="text-xl font-semibold mb-4">Practice Areas</h2>
-              <p className="text-gray-700 mb-6">
-                {lawyer?.name} specializes in the following areas of law:
-              </p>
               
               {lawyer?.specializations && Array.isArray(lawyer.specializations) && lawyer.specializations.length > 0 ? (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-                  {lawyer.specializations.map((specialization, index) => (
-                    <div key={index} className="bg-gray-50 rounded-lg p-4 border border-gray-200">
-                      <div className="flex items-center">
-                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-primary mr-2" viewBox="0 0 20 20" fill="currentColor">
-                          <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                        </svg>
-                        <span className="font-medium text-gray-800">{specialization}</span>
+                <>
+                  <p className="text-gray-700 mb-6">
+                    {lawyer.name} specializes in the following areas of law:
+                  </p>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+                    {lawyer.specializations.map((specialization, index) => (
+                      <div key={index} className="bg-gray-50 rounded-lg p-4 border border-gray-200">
+                        <div className="flex items-center">
+                          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-primary mr-2" viewBox="0 0 20 20" fill="currentColor">
+                            <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                          </svg>
+                          <span className="font-medium text-gray-800">{specialization}</span>
+                        </div>
                       </div>
-                    </div>
-                  ))}
-                </div>
+                    ))}
+                  </div>
+                </>
               ) : (
-                <p className="text-gray-500 italic">No specializations listed yet.</p>
+                <div className="bg-gray-50 rounded-lg p-6 text-center">
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-12 w-12 mx-auto text-gray-400 mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                  </svg>
+                  <p className="text-gray-500">No specializations listed yet.</p>
+                </div>
               )}
 
               {/* Additional lawyer details */}
@@ -433,78 +449,47 @@ const LawyerProfilePage = () => {
             </div>
           )}
           
-          {activeTab === 'education' && (
-            <div>
-              <h2 className="text-xl font-semibold mb-4">Education</h2>
-              <div className="space-y-6 mb-8">
-                {lawyer.education.map((edu, index) => (
-                  <div key={index} className="flex">
-                    <div className="mr-4 mt-1">
-                      <div className="w-10 h-10 rounded-full bg-primary/10 text-primary flex items-center justify-center">
-                        <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path d="M12 14l9-5-9-5-9 5 9 5z" />
-                          <path d="M12 14l6.16-3.422a12.083 12.083 0 01.665 6.479A11.952 11.952 0 0012 20.055a11.952 11.952 0 00-6.824-2.998 12.078 12.078 0 01.665-6.479L12 14z" />
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 14l9-5-9-5-9 5 9 5zm0 0l6.16-3.422a12.083 12.083 0 01.665 6.479A11.952 11.952 0 0012 20.055a11.952 11.952 0 00-6.824-2.998 12.078 12.078 0 01.665-6.479L12 14zm-4 6v-7.5l4-2.222" />
-                        </svg>
-                      </div>
-                    </div>
-                    <div>
-                      <h3 className="font-semibold text-gray-800">{edu.degree}</h3>
-                      <p className="text-gray-600">{edu.institution}</p>
-                      <p className="text-gray-500 text-sm">Graduated: {edu.year}</p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-              
-              <h2 className="text-xl font-semibold mb-4">Bar Admissions & Associations</h2>
-              <ul className="list-disc list-inside text-gray-700 space-y-2">
-                {lawyer.barAssociations.map((association, index) => (
-                  <li key={index}>{association}</li>
-                ))}
-              </ul>
-            </div>
-          )}
-          
           {activeTab === 'reviews' && (
             <div>
               <div className="flex justify-between items-center mb-6">
                 <h2 className="text-xl font-semibold">Client Reviews</h2>
                 <div className="flex items-center">
-                  <span className="text-2xl font-bold text-gray-800 mr-2">{lawyer.rating}</span>
-                  <StarRating rating={lawyer.rating} />
-                  <span className="ml-2 text-gray-500">({lawyer.reviewCount})</span>
+                  <span className="text-2xl font-bold text-gray-800 mr-2">{lawyer?.rating || 0}</span>
+                  <StarRating rating={lawyer?.rating || 0} />
+                  <span className="ml-2 text-gray-500">({lawyer?.reviewCount || 0})</span>
                 </div>
               </div>
               
-              <div className="space-y-6">
-                {lawyer.testimonials.map((testimonial) => (
-                  <div key={testimonial.id} className="border-b border-gray-200 pb-6 last:border-0">
-                    <div className="flex justify-between items-start mb-2">
-                      <div>
-                        <h3 className="font-medium text-gray-800">{testimonial.client}</h3>
-                        <p className="text-gray-500 text-sm">{testimonial.date}</p>
-                      </div>
-                      <StarRating rating={testimonial.rating} />
-                    </div>
-                    <p className="text-gray-700">{testimonial.text}</p>
+              {lawyer?.reviewCount > 0 ? (
+                <div className="space-y-6">
+                  {/* Reviews will be implemented later */}
+                  <div className="bg-gray-50 rounded-lg p-6 text-center">
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-12 w-12 mx-auto text-gray-400 mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
+                    </svg>
+                    <p className="text-gray-500">Reviews feature coming soon!</p>
                   </div>
-                ))}
-              </div>
+                </div>
+              ) : (
+                <div className="bg-gray-50 rounded-lg p-6 text-center">
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-12 w-12 mx-auto text-gray-400 mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
+                  </svg>
+                  <p className="text-gray-500">No reviews yet.</p>
+                </div>
+              )}
             </div>
           )}
           
           {activeTab === 'cases' && (
             <div>
-              <h2 className="text-xl font-semibold mb-6">Notable Case Highlights</h2>
+              <h2 className="text-xl font-semibold mb-6">Case Highlights</h2>
               
-              <div className="space-y-6">
-                {lawyer.caseHighlights.map((caseItem) => (
-                  <div key={caseItem.id} className="bg-gray-50 rounded-lg p-5 border border-gray-200">
-                    <h3 className="text-lg font-medium text-gray-800 mb-2">{caseItem.title}</h3>
-                    <p className="text-gray-700">{caseItem.description}</p>
-                  </div>
-                ))}
+              <div className="bg-gray-50 rounded-lg p-6 text-center">
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-12 w-12 mx-auto text-gray-400 mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                </svg>
+                <p className="text-gray-500">Case highlights feature coming soon!</p>
               </div>
             </div>
           )}
