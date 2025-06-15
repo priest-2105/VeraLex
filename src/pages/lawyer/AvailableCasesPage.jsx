@@ -1,90 +1,18 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { motion } from 'framer-motion'
+import { useSelector } from 'react-redux'
+import { databases } from '../../lib/appwrite'
+import { Query } from 'appwrite'
+import { selectCurrentUser } from '../../store/authSlice'
+import LoadingSpinner from '../../components/common/LoadingSpinner'
 
-// Mock data for available cases
-const mockCases = [
-  {
-    id: 'case-1',
-    title: 'International Trademark Registration Assistance',
-    description: 'We need assistance registering our trademark in multiple international jurisdictions, including EU, UK, and Asia. Looking for a lawyer with experience in international IP law.',
-    type: 'Intellectual Property',
-    budget: '$2,500 - $4,000',
-    location: 'Remote',
-    postedAt: '2023-07-01',
-    applicants: 3,
-    clientName: 'TechSolutions Inc.',
-    clientRating: 4.8,
-    clientReviews: 12
-  },
-  {
-    id: 'case-2',
-    title: 'Employment Contract Review for Tech Startup',
-    description: 'Our startup is hiring key executives and needs comprehensive employment contracts reviewed. We have 5 contracts that need review and possible modification.',
-    type: 'Employment Law',
-    budget: '$1,500 - $2,500',
-    location: 'Remote',
-    postedAt: '2023-06-29',
-    applicants: 7,
-    clientName: 'InnovateTech',
-    clientRating: 4.5,
-    clientReviews: 8
-  },
-  {
-    id: 'case-3',
-    title: 'Workplace Discrimination Lawsuit',
-    description: 'Representing an employee in a workplace discrimination case against a large corporation. Need experienced employment lawyer with litigation experience.',
-    type: 'Employment Law',
-    budget: '$5,000 - $8,000',
-    location: 'New York, NY',
-    postedAt: '2023-06-28',
-    applicants: 10,
-    clientName: 'Individual Client',
-    clientRating: 5.0,
-    clientReviews: 2
-  },
-  {
-    id: 'case-4',
-    title: 'Software License Agreement Review',
-    description: 'Need a lawyer to review and negotiate SaaS license agreements with enterprise clients. Looking for someone with software licensing expertise.',
-    type: 'Technology Law',
-    budget: '$2,000 - $3,000',
-    location: 'Remote',
-    postedAt: '2023-06-27',
-    applicants: 5,
-    clientName: 'CloudSoft Systems',
-    clientRating: 4.2,
-    clientReviews: 15
-  },
-  {
-    id: 'case-5',
-    title: 'Corporate Restructuring Assistance',
-    description: 'Our company is undergoing restructuring and needs legal guidance on corporate structure, tax implications, and employee transitions.',
-    type: 'Corporate Law',
-    budget: '$10,000 - $15,000',
-    location: 'Chicago, IL',
-    postedAt: '2023-06-25',
-    applicants: 8,
-    clientName: 'Midwest Manufacturing',
-    clientRating: 4.7,
-    clientReviews: 9
-  },
-  {
-    id: 'case-6',
-    title: 'Patent Infringement Case',
-    description: 'We believe a competitor is infringing on our patented technology. Need a lawyer to investigate and potentially file a patent infringement lawsuit.',
-    type: 'Intellectual Property',
-    budget: '$7,500 - $12,000',
-    location: 'San Francisco, CA',
-    postedAt: '2023-06-22',
-    applicants: 12,
-    clientName: 'InnovateX',
-    clientRating: 4.9,
-    clientReviews: 17
-  }
-]
+// Appwrite collection IDs
+const DATABASE_ID = import.meta.env.VITE_APPWRITE_DATABASE_ID
+const CASES_COLLECTION_ID = import.meta.env.VITE_APPWRITE_CASES_COLLECTION_ID
+const CASE_DETAILS_COLLECTION_ID = import.meta.env.VITE_APPWRITE_CASE_DETAILS_COLLECTION_ID
 
-// Filter categories
+// Case types for filtering
 const caseTypes = [
   'All Types',
   'Corporate Law',
@@ -99,6 +27,9 @@ const caseTypes = [
   'Tax Law'
 ]
 
+// Available roles for filtering
+const availableRoles = ['All Roles', 'Plaintiff', 'Defendant']
+
 // Helper function to format date
 const formatDate = (dateString) => {
   const options = { year: 'numeric', month: 'long', day: 'numeric' }
@@ -106,18 +37,132 @@ const formatDate = (dateString) => {
 }
 
 const AvailableCasesPage = () => {
+  const [cases, setCases] = useState([])
   const [selectedType, setSelectedType] = useState('All Types')
   const [searchQuery, setSearchQuery] = useState('')
-  
-  // Filter cases based on selected type and search query
-  const filteredCases = mockCases.filter(caseItem => {
+  const [selectedRole, setSelectedRole] = useState('All Roles')
+  const [budgetRange, setBudgetRange] = useState({ min: '', max: '' })
+  const [sortBy, setSortBy] = useState('recent') // 'recent' or 'oldest'
+  const [isLoading, setIsLoading] = useState(true)
+  const [error, setError] = useState('')
+  const currentUser = useSelector(selectCurrentUser)
+
+  // Fetch available cases
+  useEffect(() => {
+    const fetchCases = async () => {
+      if (!currentUser?.$id) {
+        setError('You must be logged in to view available cases')
+        setIsLoading(false)
+        return
+      }
+
+      setIsLoading(true)
+      setError('')
+
+      try {
+        
+        // First fetch ALL cases without any filters
+        const allCasesResponse = await databases.listDocuments(
+          DATABASE_ID,
+          CASES_COLLECTION_ID,
+          [Query.orderDesc('createdAt')]
+        )
+
+       
+        // Now fetch active cases
+        const activeCasesResponse = await databases.listDocuments(
+          DATABASE_ID,
+          CASES_COLLECTION_ID,
+          [
+            Query.equal('status', 'pending'),
+            Query.orderDesc('createdAt')
+          ]
+        )
+
+        // Map the active cases
+        const mappedCases = activeCasesResponse.documents.map(caseDoc => {
+          return {
+            id: caseDoc.$id,
+            title: caseDoc.title,
+            description: caseDoc.description,
+            type: caseDoc.caseType,
+            budget: caseDoc.budget,
+            role: caseDoc.role,
+            status: caseDoc.status,
+            postedAt: caseDoc.createdAt,
+            updatedAt: caseDoc.updatedAt,
+            userId: caseDoc.userId
+          }
+        })
+
+        setCases(mappedCases)
+      } catch (error) {
+        setError('Failed to load available cases. Please try again.')
+      } finally {
+        setIsLoading(false)
+      }
+    }
+
+    fetchCases()
+  }, [currentUser?.$id])
+
+  // Function to fetch case details when viewing a specific case
+  const fetchCaseDetails = async (caseId) => {
+    try {
+      const response = await databases.listDocuments(
+        DATABASE_ID,
+        CASE_DETAILS_COLLECTION_ID,
+        [Query.equal('caseId', caseId)]
+      )
+
+      if (response.documents.length > 0) {
+        return response.documents[0]
+      }
+      return null
+    } catch (error) {
+      console.error('Error fetching case details:', error)
+      return null
+    }
+  }
+
+  // Filter cases based on all criteria
+  const filteredCases = cases.filter(caseItem => {
     const matchesType = selectedType === 'All Types' || caseItem.type === selectedType
+    const matchesRole = selectedRole === 'All Roles' || caseItem.role === selectedRole
     const matchesSearch = 
       caseItem.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
       caseItem.description.toLowerCase().includes(searchQuery.toLowerCase())
+    const matchesBudget = 
+      (!budgetRange.min || caseItem.budget >= Number(budgetRange.min)) &&
+      (!budgetRange.max || caseItem.budget <= Number(budgetRange.max))
     
-    return matchesType && matchesSearch
+    return matchesType && matchesRole && matchesSearch && matchesBudget
+  }).sort((a, b) => {
+    // Sort by date
+    const dateA = new Date(a.postedAt)
+    const dateB = new Date(b.postedAt)
+    return sortBy === 'recent' ? dateB - dateA : dateA - dateB
   })
+
+  if (isLoading) {
+    return (
+      <div className="flex justify-center items-center h-64">
+        <LoadingSpinner />
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div className="bg-white rounded-xl shadow-md p-8 text-center">
+        <svg xmlns="http://www.w3.org/2000/svg" className="h-16 w-16 mx-auto text-red-500 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+        </svg>
+        <h3 className="text-xl font-medium text-gray-900 mb-2">Error Loading Cases</h3>
+        <p className="text-gray-600">{error}</p>
+      </div>
+    )
+  }
 
   return (
     <div>
@@ -126,57 +171,116 @@ const AvailableCasesPage = () => {
         <p className="text-gray-600 mt-1">Browse and apply for open legal matters</p>
       </div>
 
-      {/* Search and Filter Section */}
-      <div className="bg-white rounded-xl shadow-md p-6 mb-8">
-        <div className="flex flex-col md:flex-row gap-4">
-          <div className="flex-grow">
-            <label htmlFor="search" className="block text-sm font-medium text-gray-700 mb-1">Search</label>
+      {/* Search and Filters */}
+      <div className="card bg-white mb-8 p-6 border border-gray-200">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          {/* Search */}
+          <div className="lg:col-span-2">
             <input
               type="text"
-              id="search"
-              className="input"
-              placeholder="Search by keyword..."
+              placeholder="Search cases..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
+              className="input input-bordered w-full border border-gray-300 focus:border-primary focus:ring-1 focus:ring-primary"
             />
           </div>
-          <div className="md:w-1/3">
-            <label htmlFor="type" className="block text-sm font-medium text-gray-700 mb-1">Case Type</label>
+
+          {/* Case Type Filter */}
+          <div>
             <select
-              id="type"
-              className="input"
               value={selectedType}
               onChange={(e) => setSelectedType(e.target.value)}
+              className="select py-2 rounded-md px-2 select-bordered w-full border border-gray-300 focus:border-primary focus:ring-1 focus:ring-primary"
             >
+              <option value="All Types">All Types</option>
               {caseTypes.map(type => (
                 <option key={type} value={type}>{type}</option>
               ))}
             </select>
           </div>
-          <div className="md:self-end">
-            <button className="btn btn-primary w-full md:w-auto">
-              Apply Filters
+
+          {/* Role Filter */}
+          <div>
+            <select
+              value={selectedRole}
+              onChange={(e) => setSelectedRole(e.target.value)}
+              className="select  py-2 rounded-md px-2  select-bordered w-full border border-gray-300 focus:border-primary focus:ring-1 focus:ring-primary"
+            >
+              {availableRoles.map(role => (
+                <option key={role} value={role}>{role}</option>
+              ))}
+            </select>
+          </div>
+
+          {/* Budget Range */}
+          <div className="lg:col-span-2 grid grid-cols-2 gap-4">
+            <div>
+              <input
+                type="number"
+                placeholder="Min Budget"
+                value={budgetRange.min}
+                onChange={(e) => setBudgetRange(prev => ({ ...prev, min: e.target.value }))}
+                className="input input-bordered w-full border border-gray-300 focus:border-primary focus:ring-1 focus:ring-primary"
+                min="0"
+              />
+            </div>
+            <div>
+              <input
+                type="number"
+                placeholder="Max Budget"
+                value={budgetRange.max}
+                onChange={(e) => setBudgetRange(prev => ({ ...prev, max: e.target.value }))}
+                className="input input-bordered w-full border border-gray-300 focus:border-primary focus:ring-1 focus:ring-primary"
+                min="0"
+              />
+            </div>
+          </div>
+
+          {/* Sort By */}
+          <div>
+            <select
+              value={sortBy}
+              onChange={(e) => setSortBy(e.target.value)}
+              className="select  py-2 rounded-md px-2  select-bordered w-full border border-gray-300 focus:border-primary focus:ring-1 focus:ring-primary"
+            >
+              <option value="recent">Most Recent</option>
+              <option value="oldest">Oldest First</option>
+            </select>
+          </div>
+
+          {/* Clear Filters */}
+          <div>
+            <button
+              onClick={() => {
+                setSelectedType('All Types')
+                setSelectedRole('All Roles')
+                setSearchQuery('')
+                setBudgetRange({ min: '', max: '' })
+                setSortBy('recent')
+              }}
+              className="btn btn-outline w-full border border-gray-300 hover:border-primary hover:bg-primary hover:text-white"
+            >
+              Clear Filters
             </button>
           </div>
         </div>
       </div>
 
-      {/* Results Count */}
-      <div className="flex justify-between items-center mb-6">
+      {/* Results count */}
+      <div className="mb-6">
         <p className="text-gray-600">Showing {filteredCases.length} available cases</p>
-        <div className="flex gap-2">
-          <button className="p-2 border rounded bg-white">
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-            </svg>
-          </button>
-          <button className="p-2 border rounded bg-primary text-white">
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 10h16M4 14h16M4 18h16" />
-            </svg>
-          </button>
-        </div>
       </div>
+
+      {/* Debug information - remove in production */}
+      {/* {process.env.NODE_ENV === 'development' && (
+        <div className="mb-4 p-4 bg-gray-100 rounded-lg">
+          <h3 className="font-medium mb-2">Debug Info:</h3>
+          <p>Total cases: {cases.length}</p>
+          <p>Filtered cases: {filteredCases.length}</p>
+          <p>Selected type: {selectedType}</p>
+          <p>Search query: {searchQuery}</p>
+        </div>
+      )} */}
 
       {/* Case List */}
       <div className="space-y-6">
@@ -192,7 +296,13 @@ const AvailableCasesPage = () => {
               <div className="flex flex-col md:flex-row gap-6">
                 <div className="flex-grow">
                   <div className="flex items-center mb-2">
-                    <span className="badge bg-green-100 text-green-800">New Case</span>
+                    <span className={`badge ${
+                      caseItem.status === 'active' ? 'bg-green-100 text-green-800' :
+                      caseItem.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
+                      'bg-gray-100 text-gray-800'
+                    }`}>
+                      {caseItem.status.charAt(0).toUpperCase() + caseItem.status.slice(1)}
+                    </span>
                     <span className="text-xs text-gray-500 ml-2">Posted {formatDate(caseItem.postedAt)}</span>
                   </div>
                   <h3 className="text-xl font-medium text-gray-900 mb-2">{caseItem.title}</h3>
@@ -205,28 +315,15 @@ const AvailableCasesPage = () => {
                     </div>
                     <div>
                       <div className="text-xs text-gray-500">Budget</div>
-                      <div className="font-medium">{caseItem.budget}</div>
+                      <div className="font-medium">${caseItem.budget.toLocaleString()}</div>
                     </div>
                     <div>
-                      <div className="text-xs text-gray-500">Location</div>
-                      <div className="font-medium">{caseItem.location}</div>
+                      <div className="text-xs text-gray-500">Role</div>
+                      <div className="font-medium capitalize">{caseItem.role}</div>
                     </div>
                     <div>
-                      <div className="text-xs text-gray-500">Applicants</div>
-                      <div className="font-medium">{caseItem.applicants} lawyers</div>
-                    </div>
-                  </div>
-
-                  <div className="flex items-center">
-                    <div className="text-sm mr-4">
-                      <span className="text-gray-600">Posted by:</span> <span className="font-medium">{caseItem.clientName}</span>
-                    </div>
-                    <div className="flex items-center">
-                      <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-yellow-500" fill="currentColor" viewBox="0 0 24 24" stroke="none">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" />
-                      </svg>
-                      <span className="ml-1 text-sm font-medium">{caseItem.clientRating}</span>
-                      <span className="ml-1 text-sm text-gray-500">({caseItem.clientReviews} reviews)</span>
+                      <div className="text-xs text-gray-500">Last Updated</div>
+                      <div className="font-medium">{formatDate(caseItem.updatedAt)}</div>
                     </div>
                   </div>
                 </div>
@@ -238,7 +335,11 @@ const AvailableCasesPage = () => {
                   >
                     View Details
                   </Link>
-                  <button className="btn btn-outline w-full">Save</button>
+                  <button 
+                    className="btn btn-outline w-full"
+                  >
+                    Save
+                  </button>
                 </div>
               </div>
             </motion.div>
