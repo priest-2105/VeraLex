@@ -29,6 +29,8 @@ const ClientDashboardPage = lazy(() => import('./pages/client/DashboardPage'))
 const CreateCasePage = lazy(() => import('./pages/client/CreateCasePage'))
 const MyCasesPage = lazy(() => import('./pages/client/MyCasesPage'))
 const FindLawyerPage = lazy(() => import('./pages/client/FindLawyerPage'))
+const ClientCaseDetailPage = lazy(() => import('./pages/client/CaseDetailPage'))
+
 
 // Lawyer Pages
 const LawyerDashboardPage = lazy(() => import('./pages/lawyer/DashboardPage'))
@@ -36,11 +38,12 @@ const AvailableCasesPage = lazy(() => import('./pages/lawyer/AvailableCasesPage'
 const MyApplicationsPage = lazy(() => import('./pages/lawyer/MyApplicationsPage'))
 const MyClientsPage = lazy(() => import('./pages/lawyer/MyClientsPage'))
 const LawyerMyCasesPage = lazy(() => import('./pages/lawyer/MyCasesPage'))
+const LawyerCaseDetailPage = lazy(() => import('./pages/lawyer/CaseDetailPage'))
+
 
 // Shared Pages
 const ProfilePage = lazy(() => import('./pages/shared/ProfilePage'))
 const LawyerProfilePage = lazy(() => import('./pages/shared/LawyerProfilePage'))
-const CaseDetailPage = lazy(() => import('./pages/client/CaseDetailPage'))
 const SettingsPage = lazy(() => import('./pages/shared/SettingsPage'))
 
 function App() {
@@ -97,7 +100,7 @@ function App() {
             <Route path="create-case" element={<CreateCasePage />} />
             <Route path="my-cases" element={<MyCasesPage />} />
             <Route path="find-lawyer" element={<FindLawyerPage />} />
-            <Route path="case/:id" element={<CaseDetailPage />} />
+            <Route path="case/:id" element={<ClientCaseDetailPage />} />
             <Route path="profile" element={<ProfilePage />} />
             <Route path="lawyer/:lawyerId" element={<LawyerProfilePage />} />
             <Route path="settings" element={<SettingsPage />} />
@@ -114,7 +117,7 @@ function App() {
             <Route path="my-cases" element={<LawyerMyCasesPage />} />
             <Route path="my-applications" element={<MyApplicationsPage />} />
             <Route path="my-clients" element={<MyClientsPage />} />
-            <Route path="case/:id" element={<CaseDetailPage />} />
+            <Route path="case/:id" element={<LawyerCaseDetailPage />} />
             <Route path="profile" element={<ProfilePage />} />
             <Route path=":lawyerId" element={<LawyerProfilePage />} />
             <Route path="settings" element={<SettingsPage />} />
