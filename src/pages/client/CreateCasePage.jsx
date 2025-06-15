@@ -126,7 +126,8 @@ const CreateCasePage = () => {
         message: `Your case "${formData.title}" has been created successfully`,
         caseId: createdCase.$id,
         timestamp: now,
-        read: false
+        read: false,
+        url: `/client/case/${createdCase.$id}`
       })
 
       // Check if user already has a notification document

@@ -68,9 +68,9 @@ const DashboardLayout = () => {
     fetchNotifications()
   }, [currentUser?.$id])
 
-  // Function to mark notifications as read
-  const markNotificationsAsRead = async () => {
-    if (!currentUser?.$id || notifications.length === 0) return
+  // Function to mark a single notification as read
+  const markNotificationAsRead = async (notificationId) => {
+    if (!currentUser?.$id) return
 
     try {
       const response = await databases.listDocuments(
@@ -83,8 +83,17 @@ const DashboardLayout = () => {
         const notificationDoc = response.documents[0]
         const updatedNotifications = notificationDoc.notifications.map(n => {
           const parsed = JSON.parse(n)
-          return JSON.stringify({ ...parsed, read: true })
+          if (parsed.id === notificationId) {
+            return JSON.stringify({ ...parsed, read: true })
+          }
+          return n
         })
+
+        // Calculate new unread count
+        const newUnreadCount = updatedNotifications.reduce((count, n) => {
+          const parsed = JSON.parse(n)
+          return parsed.read ? count : count + 1
+        }, 0)
 
         await databases.updateDocument(
           DATABASE_ID,
@@ -92,16 +101,28 @@ const DashboardLayout = () => {
           notificationDoc.$id,
           {
             notifications: updatedNotifications,
-            unreadCount: 0,
+            unreadCount: newUnreadCount,
             lastRead: new Date().toISOString()
           }
         )
 
-        setNotifications(prev => prev.map(n => ({ ...n, read: true })))
-        setUnreadCount(0)
+        // Update local state
+        setNotifications(prev => prev.map(n => 
+          n.id === notificationId ? { ...n, read: true } : n
+        ))
+        setUnreadCount(newUnreadCount)
       }
     } catch (error) {
-      console.error('Error marking notifications as read:', error)
+      console.error('Error marking notification as read:', error)
+    }
+  }
+
+  // Function to handle notification click
+  const handleNotificationClick = (notification) => {
+    if (notification.url) {
+      markNotificationAsRead(notification.id)
+      navigate(notification.url)
+      setNotificationsOpen(false)
     }
   }
 
@@ -402,15 +423,15 @@ const DashboardLayout = () => {
                                   <p className="text-xs text-gray-500 mt-1">
                                     {new Date(notification.timestamp).toLocaleString()}
                                   </p>
-                                  {notification.caseId && (
+                                  {notification.url && (
                                     <button
-                                      onClick={() => {
-                                        navigate(`/client/case/${notification.caseId}`)
-                                        setNotificationsOpen(false)
-                                      }}
+                                      onClick={() => handleNotificationClick(notification)}
                                       className="mt-1 text-xs text-primary hover:underline"
                                     >
-                                      View Case
+                                      {notification.type === 'case_created' ? 'View Case' :
+                                       notification.type === 'application' ? 'View Application' :
+                                       notification.type === 'message' ? 'View Message' :
+                                       'View Details'}
                                     </button>
                                   )}
                                 </div>
