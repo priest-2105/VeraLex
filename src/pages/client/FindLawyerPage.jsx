@@ -7,7 +7,8 @@ import Alert from '../../components/common/Alert'
 
 // Appwrite collection IDs
 const DATABASE_ID = import.meta.env.VITE_APPWRITE_DATABASE_ID
-const USERS_COLLECTION_ID = import.meta.env.VITE_APPWRITE_PROFILE_COLLECTION_ID
+const PROFILE_COLLECTION_ID = import.meta.env.VITE_APPWRITE_PROFILE_COLLECTION_ID
+const LAWYER_DETAILS_COLLECTION_ID = import.meta.env.VITE_APPWRITE_LAWYER_DETAILS_COLLECTION_ID
 
 // Available specializations for filter
 const specializations = [
@@ -49,37 +50,92 @@ const FindLawyerPage = () => {
       setError('')
       
       try {
-        // Query only users with role 'lawyer'
-        const response = await databases.listDocuments(
+        // 1. Get all lawyer profiles
+        const profileResponse = await databases.listDocuments(
           DATABASE_ID,
-          USERS_COLLECTION_ID,
+          PROFILE_COLLECTION_ID,
           [
             Query.equal('role', 'lawyer'),
-            Query.limit(100) 
+            Query.limit(100)
           ]
         )
 
-        // Transform the data to match our UI needs
-        const transformedLawyers = response.documents.map(lawyer => ({
-          id: lawyer.$id,
-          name: `${lawyer.firstName} ${lawyer.lastName}`,
-          photo: lawyer.profileImage || null,
-          specializations: lawyer.specializations || [],
-          rating: lawyer.rating || 0,
-          reviewCount: lawyer.reviewCount || 0,
-          yearsOfExperience: lawyer.yearsOfExperience || 0,
-          location: lawyer.location || 'Location not specified',
-          hourlyRate: lawyer.hourlyRate || 0,
-          caseCount: lawyer.caseCount || 0,
-          bio: lawyer.bio || '',
-          featured: lawyer.featured || false,
-          email: lawyer.email,
-          phone: lawyer.phone,
-          barId: lawyer.barId,
-          isVerified: lawyer.isVerified || false
-        }))
+        console.log('=== Profile Collection Info ===')
+        console.log('Collection ID:', PROFILE_COLLECTION_ID)
+        console.log('Total Profiles:', profileResponse.total)
+        console.log('Profiles:', profileResponse.documents)
 
-        setLawyers(transformedLawyers)
+        // 2. Get all lawyer details
+        const lawyerDetailsResponse = await databases.listDocuments(
+          DATABASE_ID,
+          LAWYER_DETAILS_COLLECTION_ID,
+          [
+            Query.limit(100)
+          ]
+        )
+
+        console.log('=== Lawyer Details Collection Info ===')
+        console.log('Collection ID:', LAWYER_DETAILS_COLLECTION_ID)
+        console.log('Database ID:', DATABASE_ID)
+        console.log('Total Lawyer Details:', lawyerDetailsResponse.total)
+        console.log('Lawyer Details:', lawyerDetailsResponse.documents)
+
+        // Log the specific profile we're trying to match
+        const profile = profileResponse.documents[0]
+        if (profile) {
+          console.log('=== Profile Needing Details ===')
+          console.log('Profile ID:', profile.$id)
+          console.log('User ID:', profile.userId)
+          console.log('Name:', `${profile.firstName} ${profile.lastName}`)
+          console.log('Email:', profile.email)
+        }
+
+        // 3. Create a map of lawyer details by userId for easy lookup
+        const lawyerDetailsMap = new Map(
+          lawyerDetailsResponse.documents.map(details => [details.userId, details])
+        )
+
+        // Log the userIds we're using to match
+        console.log('Profile userIds:', profileResponse.documents.map(p => p.userId))
+        console.log('Lawyer Details userIds:', lawyerDetailsResponse.documents.map(d => d.userId))
+
+        // 4. Match profiles with their details using userId
+        const lawyers = profileResponse.documents.map(profile => {
+          // Find the matching lawyer details using userId
+          const details = lawyerDetailsMap.get(profile.userId)
+          console.log(`Matching for profile ${profile.userId}:`, details ? 'Found details' : 'No details found')
+
+          return {
+            // Profile data
+            id: profile.$id,
+            userId: profile.userId,
+            name: `${profile.firstName} ${profile.lastName}`,
+            email: profile.email,
+            phone: profile.phone || '',
+            address: profile.address || '',
+            bio: profile.bio || '',
+            role: profile.role,
+            
+            // Lawyer details data (with fallbacks to profile data or defaults)
+            photo: details?.profileImage || profile.profileImage || null,
+            barId: details?.barId || '',
+            specializations: details?.specializations || [],
+            isVerified: details?.isVerified || false,
+            rating: details?.rating || 0,
+            reviewCount: details?.reviewCount || 0,
+            yearsOfExperience: details?.yearsOfExperience || 0,
+            location: details?.location || 'Location not specified',
+            hourlyRate: details?.hourlyRate || 0,
+            caseCount: details?.caseCount || 0,
+            featured: details?.featured || false,
+            // Use lawyer details phone if available, otherwise fallback to profile phone
+            phone: details?.phone || profile.phone || '',
+            // Use lawyer details bio if available, otherwise fallback to profile bio
+            bio: details?.bio || profile.bio || ''
+          }
+        })
+
+        setLawyers(lawyers)
       } catch (error) {
         console.error('Error fetching lawyers:', error)
         setError('Failed to load lawyers. Please try again later.')
