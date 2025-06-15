@@ -3,9 +3,14 @@ import { useState, useEffect, useRef } from 'react'
 import { motion } from 'framer-motion'
 import { useSelector, useDispatch } from 'react-redux'
 import { selectCurrentUser, clearUser } from '../store/authSlice'
-import { account } from '../lib/appwrite'
+import { account, databases } from '../lib/appwrite'
+import { Query } from 'appwrite'
 import LogoutConfirmationModal from '../components/common/LogoutConfirmationModal'
 import defaultAvatar from '../assets/user_person_black.jpg'
+
+// Appwrite collection IDs
+const DATABASE_ID = import.meta.env.VITE_APPWRITE_DATABASE_ID
+const NOTIFICATIONS_COLLECTION_ID = import.meta.env.VITE_APPWRITE_NOTIFICATIONS_COLLECTION_ID
 
 const DashboardLayout = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(true)
@@ -13,6 +18,9 @@ const DashboardLayout = () => {
   const [notificationsOpen, setNotificationsOpen] = useState(false)
   const [isLogoutModalOpen, setIsLogoutModalOpen] = useState(false)
   const [isLoggingOut, setIsLoggingOut] = useState(false)
+  const [notifications, setNotifications] = useState([])
+  const [unreadCount, setUnreadCount] = useState(0)
+  const [isLoadingNotifications, setIsLoadingNotifications] = useState(false)
   const location = useLocation()
   const navigate = useNavigate()
   const sidebarRef = useRef(null)
@@ -25,6 +33,87 @@ const DashboardLayout = () => {
   const userName = currentUser?.name || 'User'
   const userAvatar = currentUser?.profile?.profileImage || defaultAvatar
   
+  // Fetch notifications when user is logged in
+  useEffect(() => {
+    const fetchNotifications = async () => {
+      if (!currentUser?.$id) return
+
+      setIsLoadingNotifications(true)
+      try {
+        const response = await databases.listDocuments(
+          DATABASE_ID,
+          NOTIFICATIONS_COLLECTION_ID,
+          [Query.equal('userId', currentUser.$id)]
+        )
+
+        if (response.documents.length > 0) {
+          const notificationDoc = response.documents[0]
+          const parsedNotifications = notificationDoc.notifications
+            .map(n => JSON.parse(n))
+            .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp))
+          
+          setNotifications(parsedNotifications)
+          setUnreadCount(notificationDoc.unreadCount || 0)
+        } else {
+          setNotifications([])
+          setUnreadCount(0)
+        }
+      } catch (error) {
+        console.error('Error fetching notifications:', error)
+      } finally {
+        setIsLoadingNotifications(false)
+      }
+    }
+
+    fetchNotifications()
+  }, [currentUser?.$id])
+
+  // Function to mark notifications as read
+  const markNotificationsAsRead = async () => {
+    if (!currentUser?.$id || notifications.length === 0) return
+
+    try {
+      const response = await databases.listDocuments(
+        DATABASE_ID,
+        NOTIFICATIONS_COLLECTION_ID,
+        [Query.equal('userId', currentUser.$id)]
+      )
+
+      if (response.documents.length > 0) {
+        const notificationDoc = response.documents[0]
+        const updatedNotifications = notificationDoc.notifications.map(n => {
+          const parsed = JSON.parse(n)
+          return JSON.stringify({ ...parsed, read: true })
+        })
+
+        await databases.updateDocument(
+          DATABASE_ID,
+          NOTIFICATIONS_COLLECTION_ID,
+          notificationDoc.$id,
+          {
+            notifications: updatedNotifications,
+            unreadCount: 0,
+            lastRead: new Date().toISOString()
+          }
+        )
+
+        setNotifications(prev => prev.map(n => ({ ...n, read: true })))
+        setUnreadCount(0)
+      }
+    } catch (error) {
+      console.error('Error marking notifications as read:', error)
+    }
+  }
+
+  // Open notifications and mark as read
+  const handleNotificationsClick = () => {
+    setNotificationsOpen(!notificationsOpen)
+    setDropdownOpen(false)
+    if (!notificationsOpen && unreadCount > 0) {
+      markNotificationsAsRead()
+    }
+  }
+
   // Toggle sidebar on small screens
   const toggleSidebar = () => {
     setIsSidebarOpen(!isSidebarOpen)
@@ -229,10 +318,7 @@ const DashboardLayout = () => {
               {/* Notifications */}
               <div className="relative">
                 <button
-                  onClick={() => {
-                    setNotificationsOpen(!notificationsOpen)
-                    setDropdownOpen(false)
-                  }}
+                  onClick={handleNotificationsClick}
                   className="p-1 rounded-full text-gray-600 hover:bg-gray-100 relative"
                 >
                   <span className="sr-only">View notifications</span>
@@ -250,7 +336,9 @@ const DashboardLayout = () => {
                       d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"
                     />
                   </svg>
-                  <span className="absolute top-0 right-0 block h-2 w-2 rounded-full bg-red-500 ring-2 ring-white"></span>
+                  {unreadCount > 0 && (
+                    <span className="absolute top-0 right-0 block h-2 w-2 rounded-full bg-red-500 ring-2 ring-white"></span>
+                  )}
                 </button>
                 
                 {notificationsOpen && (
@@ -260,65 +348,91 @@ const DashboardLayout = () => {
                     className="absolute right-0 mt-2 w-80 bg-white rounded-md shadow-lg overflow-hidden z-20"
                   >
                     <div className="py-2">
-                      <div className="px-4 py-2 border-b border-gray-100">
+                      <div className="px-4 py-2 border-b border-gray-100 flex justify-between items-center">
                         <h3 className="text-sm font-semibold">Notifications</h3>
+                        {unreadCount > 0 && (
+                          <span className="text-xs text-primary">{unreadCount} unread</span>
+                        )}
                       </div>
                       
-                      <div className="px-4 py-3 border-b border-gray-100 hover:bg-gray-50">
-                        <div className="flex items-start">
-                          <div className="flex-shrink-0 bg-primary rounded-full p-1">
-                            <svg
-                              xmlns="http://www.w3.org/2000/svg"
-                              className="h-5 w-5 text-white"
-                              fill="none"
-                              viewBox="0 0 24 24"
-                              stroke="currentColor"
-                            >
-                              <path
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                                strokeWidth={2}
-                                d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
-                              />
-                            </svg>
-                          </div>
-                          <div className="ml-3">
-                            <p className="text-sm font-medium text-gray-900">New application</p>
-                            <p className="text-xs text-gray-500">John Doe applied to your case</p>
-                            <p className="text-xs text-gray-500 mt-1">Just now</p>
-                          </div>
+                      {isLoadingNotifications ? (
+                        <div className="px-4 py-3 text-center text-sm text-gray-500">
+                          Loading notifications...
                         </div>
-                      </div>
-                      
-                      <div className="px-4 py-3 hover:bg-gray-50">
-                        <div className="flex items-start">
-                          <div className="flex-shrink-0 bg-blue-500 rounded-full p-1">
-                            <svg
-                              xmlns="http://www.w3.org/2000/svg"
-                              className="h-5 w-5 text-white"
-                              fill="none"
-                              viewBox="0 0 24 24"
-                              stroke="currentColor"
-                            >
-                              <path
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                                strokeWidth={2}
-                                d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z"
-                              />
-                            </svg>
-                          </div>
-                          <div className="ml-3">
-                            <p className="text-sm font-medium text-gray-900">New message</p>
-                            <p className="text-xs text-gray-500">You have a new message from Jane Smith</p>
-                            <p className="text-xs text-gray-500 mt-1">1 hour ago</p>
-                          </div>
+                      ) : notifications.length === 0 ? (
+                        <div className="px-4 py-3 text-center text-sm text-gray-500">
+                          No notifications
                         </div>
-                      </div>
+                      ) : (
+                        <div className="max-h-96 overflow-y-auto">
+                          {notifications.map((notification, index) => (
+                            <div 
+                              key={notification.id} 
+                              className={`px-4 py-3 border-b border-gray-100 hover:bg-gray-50 ${
+                                !notification.read ? 'bg-blue-50' : ''
+                              }`}
+                            >
+                              <div className="flex items-start">
+                                <div className={`flex-shrink-0 rounded-full p-1 ${
+                                  notification.type === 'case_created' ? 'bg-primary' :
+                                  notification.type === 'application' ? 'bg-green-500' :
+                                  notification.type === 'message' ? 'bg-blue-500' :
+                                  'bg-gray-500'
+                                }`}>
+                                  <svg
+                                    xmlns="http://www.w3.org/2000/svg"
+                                    className="h-5 w-5 text-white"
+                                    fill="none"
+                                    viewBox="0 0 24 24"
+                                    stroke="currentColor"
+                                  >
+                                    {notification.type === 'case_created' && (
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                    )}
+                                    {notification.type === 'application' && (
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                                    )}
+                                    {notification.type === 'message' && (
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
+                                    )}
+                                  </svg>
+                                </div>
+                                <div className="ml-3 flex-1">
+                                  <p className="text-sm font-medium text-gray-900">{notification.message}</p>
+                                  <p className="text-xs text-gray-500 mt-1">
+                                    {new Date(notification.timestamp).toLocaleString()}
+                                  </p>
+                                  {notification.caseId && (
+                                    <button
+                                      onClick={() => {
+                                        navigate(`/client/case/${notification.caseId}`)
+                                        setNotificationsOpen(false)
+                                      }}
+                                      className="mt-1 text-xs text-primary hover:underline"
+                                    >
+                                      View Case
+                                    </button>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
                       
-                      <div className="px-4 py-2 text-center">
-                        <a href="#" className="text-sm text-primary hover:underline">View all notifications</a>
-                      </div>
+                      {notifications.length > 0 && (
+                        <div className="px-4 py-2 text-center border-t border-gray-100">
+                          <button
+                            onClick={() => {
+                              setNotificationsOpen(false)
+                              navigate(`/${userRole}/notifications`)
+                            }}
+                            className="text-sm text-primary hover:underline"
+                          >
+                            View all notifications
+                          </button>
+                        </div>
+                      )}
                     </div>
                   </motion.div>
                 )}

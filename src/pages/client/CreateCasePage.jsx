@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { useSelector } from 'react-redux'
 import { databases, storage } from '../../lib/appwrite'
-import { ID } from 'appwrite'
+import { ID, Query } from 'appwrite'
 import { selectCurrentUser } from '../../store/authSlice'
 import Alert from '../../components/common/Alert'
 
@@ -12,6 +12,7 @@ const DATABASE_ID = import.meta.env.VITE_APPWRITE_DATABASE_ID
 const CASES_COLLECTION_ID = import.meta.env.VITE_APPWRITE_CASES_COLLECTION_ID
 const CASE_DETAILS_COLLECTION_ID = import.meta.env.VITE_APPWRITE_CASE_DETAILS_COLLECTION_ID
 const CASE_DOCUMENTS_BUCKET_ID = import.meta.env.VITE_APPWRITE_CASE_DOCUMENTS_BUCKET_ID
+const NOTIFICATIONS_COLLECTION_ID = import.meta.env.VITE_APPWRITE_NOTIFICATIONS_COLLECTION_ID
 
 const CreateCasePage = () => {
   const [step, setStep] = useState(1)
@@ -96,7 +97,7 @@ const CreateCasePage = () => {
         timestamp: now
       })
 
-      // 3. Create case details document with timeline and messages
+      // 3. Create case details document
       const caseDetailsData = {
         caseId: createdCase.$id,
         deadline: formData.deadline,
@@ -107,8 +108,8 @@ const CreateCasePage = () => {
         applications: [],
         notes: '',
         lastUpdated: now,
-        timeline: [initialTimelineEvent], // Initialize with case creation event
-        messages: [] // Initialize empty messages array
+        timeline: [initialTimelineEvent],
+        messages: []
       }
 
       await databases.createDocument(
@@ -118,7 +119,55 @@ const CreateCasePage = () => {
         caseDetailsData
       )
 
-      // 4. Redirect to the case detail page
+      // 4. Create or update notification document
+      const newNotification = JSON.stringify({
+        id: ID.unique(),
+        type: 'case_created',
+        message: `Your case "${formData.title}" has been created successfully`,
+        caseId: createdCase.$id,
+        timestamp: now,
+        read: false
+      })
+
+      // Check if user already has a notification document
+      const existingNotifications = await databases.listDocuments(
+        DATABASE_ID,
+        NOTIFICATIONS_COLLECTION_ID,
+        [Query.equal('userId', currentUser.$id)]
+      )
+
+      if (existingNotifications.documents.length > 0) {
+        // Update existing notification document
+        const notificationDoc = existingNotifications.documents[0]
+        const currentNotifications = notificationDoc.notifications || []
+        
+        await databases.updateDocument(
+          DATABASE_ID,
+          NOTIFICATIONS_COLLECTION_ID,
+          notificationDoc.$id,
+          {
+            notifications: [...currentNotifications, newNotification],
+            unreadCount: (notificationDoc.unreadCount || 0) + 1,
+            lastUpdated: now
+          }
+        )
+      } else {
+        // Create new notification document
+        await databases.createDocument(
+          DATABASE_ID,
+          NOTIFICATIONS_COLLECTION_ID,
+          ID.unique(),
+          {
+            userId: currentUser.$id,
+            notifications: [newNotification],
+            unreadCount: 1,
+            lastUpdated: now,
+            lastRead: null
+          }
+        )
+      }
+
+      // 5. Redirect to the case detail page
       navigate(`/client/case/${createdCase.$id}`)
     } catch (error) {
       console.error('Error creating case:', error)
