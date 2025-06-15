@@ -1,43 +1,17 @@
 import { Link } from 'react-router-dom'
 import { motion } from 'framer-motion'
+import { useEffect, useState } from 'react'
+import { useSelector } from 'react-redux'
+import { selectCurrentUser } from '../../store/authSlice'
+import { databases } from '../../lib/appwrite'
+import {  Query } from 'appwrite'
+import LoadingSpinner from '../../components/common/LoadingSpinner'
 
-// Mock data for the dashboard
-const mockStats = [
-  { title: 'Active Cases', value: 3, icon: 'M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2', color: 'bg-blue-500' },
-  { title: 'Pending Applications', value: 7, icon: 'M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z', color: 'bg-yellow-500' },
-  { title: 'Closed Cases', value: 2, icon: 'M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z', color: 'bg-green-500' },
-]
 
-const mockCases = [
-  { 
-    id: 'case-1', 
-    title: 'Contract Dispute with Software Vendor', 
-    status: 'in_progress', 
-    createdAt: '2023-05-15', 
-    lawyerName: 'Sarah Johnson',
-    lawyerPhoto: 'https://randomuser.me/api/portraits/women/44.jpg',
-    type: 'Corporate Law'
-  },
-  { 
-    id: 'case-2', 
-    title: 'Intellectual Property Infringement', 
-    status: 'in_progress', 
-    createdAt: '2023-06-02', 
-    lawyerName: 'Michael Chen',
-    lawyerPhoto: 'https://randomuser.me/api/portraits/men/22.jpg',
-    type: 'Intellectual Property'
-  },
-  { 
-    id: 'case-3', 
-    title: 'Employment Contract Review', 
-    status: 'pending', 
-    createdAt: '2023-06-20', 
-    lawyerName: null,
-    lawyerPhoto: null,
-    type: 'Employment Law',
-    applications: 3
-  },
-]
+// Appwrite collection IDs
+const DATABASE_ID = import.meta.env.VITE_APPWRITE_DATABASE_ID
+const CASES_COLLECTION_ID = import.meta.env.VITE_APPWRITE_CASES_COLLECTION_ID
+const CASE_DETAILS_COLLECTION_ID = import.meta.env.VITE_APPWRITE_CASE_DETAILS_COLLECTION_ID
 
 // Helper function to format date
 const formatDate = (dateString) => {
@@ -62,6 +36,112 @@ const getStatusBadge = (status) => {
 }
 
 const DashboardPage = () => {
+  const currentUser = useSelector(selectCurrentUser)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(null)
+  const [cases, setCases] = useState([])
+  const [stats, setStats] = useState({
+    activeCases: 0,
+    pendingCases: 0,
+    closedCases: 0
+  })
+
+  useEffect(() => {
+    const fetchDashboardData = async () => {
+      if (!currentUser?.$id) {
+        setError('Please log in to view your dashboard')
+        setLoading(false)
+        return
+      }
+
+      try {
+        // Fetch all cases for the current user
+        const casesResponse = await databases.listDocuments(
+          DATABASE_ID,
+          CASES_COLLECTION_ID,
+          [
+            Query.equal('userId', currentUser.$id),
+            Query.orderDesc('createdAt')
+          ]
+        )
+
+        const casesData = casesResponse.documents
+
+        // Calculate statistics based on case status
+        const activeCases = casesData.filter(caseItem => 
+          caseItem.status === 'active'
+        ).length
+
+        const pendingCases = casesData.filter(caseItem => 
+          caseItem.status === 'pending'
+        ).length
+
+        const closedCases = casesData.filter(caseItem => 
+          caseItem.status === 'closed'
+        ).length
+
+        // Get only the 5 most recent cases for display
+        const recentCases = casesData.slice(0, 5)
+
+        setCases(recentCases)
+        setStats({
+          activeCases,
+          pendingCases,
+          closedCases
+        })
+        setLoading(false)
+      } catch (err) {
+        console.error('Error fetching dashboard data:', err)
+        setError('Failed to load dashboard data. Please try again later.')
+        setLoading(false)
+      }
+    }
+
+    fetchDashboardData()
+  }, [currentUser])
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <LoadingSpinner size="lg" />
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div className="text-center py-12">
+        <div className="text-red-500 mb-4">{error}</div>
+        {!currentUser && (
+          <Link to="/login" className="btn btn-primary">
+            Log In
+          </Link>
+        )}
+      </div>
+    )
+  }
+
+  const dashboardStats = [
+    { 
+      title: 'Active Cases', 
+      value: stats.activeCases, 
+      icon: 'M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2', 
+      color: 'bg-blue-500' 
+    },
+    { 
+      title: 'Pending Cases', 
+      value: stats.pendingCases, 
+      icon: 'M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z', 
+      color: 'bg-yellow-500' 
+    },
+    { 
+      title: 'Closed Cases', 
+      value: stats.closedCases, 
+      icon: 'M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z', 
+      color: 'bg-green-500' 
+    },
+  ]
+
   return (
     <div>
       <div className="mb-8">
@@ -71,7 +151,7 @@ const DashboardPage = () => {
 
       {/* Stats Grid */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-        {mockStats.map((stat, index) => (
+        {dashboardStats.map((stat, index) => (
           <motion.div
             key={stat.title}
             initial={{ opacity: 0, y: 20 }}
@@ -149,56 +229,58 @@ const DashboardPage = () => {
           </Link>
         </div>
 
-        <div className="space-y-4">
-          {mockCases.map((caseItem, index) => (
-            <motion.div
-              key={caseItem.id}
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.3, delay: index * 0.1 }}
-              className="card bg-white"
-            >
-              <div className="flex flex-col md:flex-row md:items-center justify-between">
-                <div className="mb-4 md:mb-0">
-                  <div className="flex items-center mb-2">
-                    {getStatusBadge(caseItem.status)}
-                    <span className="text-xs text-gray-500 ml-2">Created {formatDate(caseItem.createdAt)}</span>
+        {cases.length === 0 ? (
+          <div className="card bg-white text-center py-8">
+            <div className="text-gray-500 mb-4">You haven't created any cases yet</div>
+            <Link to="/client/create-case" className="btn btn-primary">
+              Create Your First Case
+            </Link>
+          </div>
+        ) : (
+          <div className="space-y-4">
+            {cases.map((caseItem, index) => (
+              <motion.div
+                key={caseItem.$id}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.3, delay: index * 0.1 }}
+                className="card bg-white"
+              >
+                <div className="flex flex-col md:flex-row md:items-center justify-between">
+                  <div className="mb-4 md:mb-0">
+                    <div className="flex items-center mb-2">
+                      {getStatusBadge(caseItem.status || 'pending')}
+                      <span className="text-xs text-gray-500 ml-2">
+                        Created {formatDate(caseItem.createdAt)}
+                      </span>
+                    </div>
+                    <Link 
+                      to={`/client/case/${caseItem.$id}`} 
+                      className="text-lg font-medium text-gray-900 hover:text-primary mb-1 block"
+                    >
+                      {caseItem.title}
+                    </Link>
+                    <div className="text-sm text-gray-500">{caseItem.caseType}</div>
+                    <div className="text-sm text-gray-500 mt-1">
+                      Budget: ${caseItem.budget?.toLocaleString() || 'Not specified'}
+                    </div>
                   </div>
-                  <Link to={`/client/case/${caseItem.id}`} className="text-lg font-medium text-gray-900 hover:text-primary mb-1 block">
-                    {caseItem.title}
-                  </Link>
-                  <div className="text-sm text-gray-500">{caseItem.type}</div>
-                </div>
 
-                <div>
-                  {caseItem.lawyerName ? (
-                    <div className="flex items-center">
-                      <img 
-                        src={caseItem.lawyerPhoto} 
-                        alt={caseItem.lawyerName} 
-                        className="w-10 h-10 rounded-full mr-3"
-                      />
-                      <div>
-                        <div className="text-sm font-medium">{caseItem.lawyerName}</div>
-                        <div className="text-xs text-gray-500">Assigned Lawyer</div>
+                  <div className="flex items-center space-x-4">
+                    <div className="text-right">
+                      <div className="text-sm font-medium text-gray-700">
+                        {caseItem.role === 'client' ? 'Client Case' : 'Lawyer Case'}
+                      </div>
+                      <div className="text-xs text-gray-500">
+                        Last updated {formatDate(caseItem.updatedAt)}
                       </div>
                     </div>
-                  ) : (
-                    <div>
-                      <div className="text-sm font-medium text-gray-700">{caseItem.applications} Applications</div>
-                      <Link 
-                        to={`/client/case/${caseItem.id}`} 
-                        className="text-xs text-primary hover:underline"
-                      >
-                        Review Applications
-                      </Link>
-                    </div>
-                  )}
+                  </div>
                 </div>
-              </div>
-            </motion.div>
-          ))}
-        </div>
+              </motion.div>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   )
