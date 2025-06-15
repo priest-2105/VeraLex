@@ -1,95 +1,105 @@
 import { useState, useEffect } from 'react'
 import { useParams } from 'react-router-dom'
 import { motion } from 'framer-motion'
+import { databases } from '../../lib/appwrite'
+import { Query } from 'appwrite'
 
+// Appwrite collection IDs
+const DATABASE_ID = import.meta.env.VITE_APPWRITE_DATABASE_ID
+const PROFILE_COLLECTION_ID = import.meta.env.VITE_APPWRITE_PROFILE_COLLECTION_ID
+const LAWYER_DETAILS_COLLECTION_ID = import.meta.env.VITE_APPWRITE_LAWYER_DETAILS_COLLECTION_ID
 
 const LawyerProfilePage = () => {
   const { lawyerId } = useParams()
   const [lawyer, setLawyer] = useState(null)
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
   const [activeTab, setActiveTab] = useState('about')
   const [showApointCaseModal, setShowApointCaseModal] = useState(false)
   const [pendingCases, setPendingCases] = useState([])
   
-  // Mock data - in a real app, fetch from API
   useEffect(() => {
-    // Simulate API call
-    setTimeout(() => {
-      setLawyer({
-        id: lawyerId,
-        name: 'John Smith, Esq.',
-        profileImage: 'https://randomuser.me/api/portraits/men/32.jpg',
-        specializations: ['Family Law', 'Civil Litigation', 'Contract Law'],
-        experience: '12 years',
-        rating: 4.8,
-        reviewCount: 56,
-        education: [
-          { degree: 'Juris Doctor', institution: 'Harvard Law School', year: '2011' },
-          { degree: 'Bachelor of Arts, Political Science', institution: 'Yale University', year: '2008' }
-        ],
-        barAssociations: ['New York State Bar Association', 'American Bar Association'],
-        about: 'John Smith is a highly experienced attorney specializing in family law and civil litigation. With over 12 years of experience, he has successfully represented clients in complex divorce proceedings, child custody disputes, and contract negotiations. John is known for his compassionate approach and dedication to achieving favorable outcomes for his clients.',
-        contactInfo: {
-          email: 'john.smith@legalfirm.com',
-          phone: '(555) 123-4567',
-          office: '123 Legal Street, Suite 400, New York, NY 10001'
-        },
-        caseWinRate: '92%',
-        languages: ['English', 'Spanish', 'French'],
-        consultationFee: '$150 per hour',
-        practiceFocus: [
-          { area: 'Divorce & Separation', percentage: 40 },
-          { area: 'Child Custody', percentage: 30 },
-          { area: 'Contract Disputes', percentage: 20 },
-          { area: 'Civil Litigation', percentage: 10 }
-        ],
-        testimonials: [
-          { 
-            id: 1, 
-            client: 'Sarah Thompson', 
-            text: 'John helped me navigate through my difficult divorce case with compassion and expertise. He was always available to answer my questions and fought for my rights every step of the way.',
-            rating: 5,
-            date: 'January 2023'
-          },
-          { 
-            id: 2, 
-            client: 'Michael Rodriguez', 
-            text: "I hired John for a complex contract dispute and couldn't be happier with the results. His attention to detail and strategic approach led to a favorable settlement.",
-            rating: 5,
-            date: 'March 2023'
-          },
-          { 
-            id: 3, 
-            client: 'Jennifer Wu', 
-            text: 'Attorney Smith handled my child custody case with professionalism and genuine care. He made a stressful situation much easier to deal with.',
-            rating: 4,
-            date: 'May 2023'
-          }
-        ],
-        caseHighlights: [
-          {
-            id: 1,
-            title: 'Major Divorce Settlement',
-            description: 'Successfully negotiated a favorable settlement in a high-asset divorce case, securing equitable distribution of property and appropriate support arrangements.'
-          },
-          {
-            id: 2,
-            title: 'Precedent-Setting Contract Case',
-            description: 'Won a significant contract dispute for a small business owner against a much larger corporation, establishing an important precedent for similar future cases.'
-          },
-          {
-            id: 3,
-            title: 'Complex Child Custody Resolution',
-            description: 'Resolved a multi-state child custody dispute with international implications, ensuring the childs best interests were protected.'
-          }
-        ],
-        availability: {
-          nextAvailable: '3 days',
-          consultationTypes: ['In-person', 'Video call', 'Phone call']
+    const fetchLawyerData = async () => {
+      setLoading(true)
+      setError('')
+      
+      try {
+        // 1. Get profile data
+        const profileResponse = await databases.listDocuments(
+          DATABASE_ID,
+          PROFILE_COLLECTION_ID,
+          [
+            Query.equal('userId', lawyerId),
+            Query.equal('role', 'lawyer'),
+            Query.limit(1)
+          ]
+        )
+
+        if (profileResponse.documents.length === 0) {
+          throw new Error('Lawyer profile not found')
         }
-      })
-      setLoading(false)
-    }, 800)
+
+        const profile = profileResponse.documents[0]
+        console.log('Profile data:', profile)
+
+        // 2. Get lawyer details
+        const lawyerDetailsResponse = await databases.listDocuments(
+          DATABASE_ID,
+          LAWYER_DETAILS_COLLECTION_ID,
+          [
+            Query.equal('userId', lawyerId),
+            Query.limit(1)
+          ]
+        )
+
+        const details = lawyerDetailsResponse.documents[0]
+        console.log('Lawyer details:', details)
+
+        // 3. Combine the data, using fields from appropriate collections
+        setLawyer({
+          // Profile data (from profiles collection)
+          id: profile.$id,
+          userId: profile.userId,
+          email: profile.email,
+          firstName: profile.firstName,
+          lastName: profile.lastName,
+          role: profile.role,
+          phone: profile.phone,
+          address: profile.address,
+          profileImage: profile.profileImage,
+          bio: profile.bio,
+
+          // Lawyer details data (from lawyer_details collection)
+          barId: details?.barId || '',
+          specializations: Array.isArray(details?.specializations) ? details.specializations : [],
+          isVerified: details?.isVerified || false,
+          isActive: details?.isActive || false,
+          rating: details?.rating || 0,
+          reviewCount: details?.reviewCount || 0,
+          yearsOfExperience: details?.yearsOfExperience || 0,
+          location: details?.location || '',
+          hourlyRate: details?.hourlyRate || 0,
+          caseCount: details?.caseCount || 0,
+          featured: details?.featured || false,
+
+          // Computed fields
+          name: `${profile.firstName} ${profile.lastName}`,
+          contactInfo: {
+            email: profile.email,
+            phone: profile.phone || details?.phone || '',
+            office: profile.address || ''
+          }
+        })
+
+      } catch (error) {
+        console.error('Error fetching lawyer data:', error)
+        setError(error.message || 'Failed to load lawyer profile')
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    fetchLawyerData()
   }, [lawyerId])
   
   // Mock data for pending cases
@@ -125,6 +135,15 @@ const LawyerProfilePage = () => {
     // Close modal after appointment
     setShowApointCaseModal(false)
     // Show success message or redirect
+  }
+  
+  if (error) {
+    return (
+      <div className="text-center py-10">
+        <h2 className="text-2xl text-gray-700">Error</h2>
+        <p className="mt-2 text-gray-500">{error}</p>
+      </div>
+    )
   }
   
   if (loading) {
@@ -171,27 +190,31 @@ const LawyerProfilePage = () => {
           <div className="flex flex-col md:flex-row items-center md:items-start gap-8">
             <div className="relative">
               <img 
-                src={lawyer.profileImage} 
-                alt={lawyer.name} 
+                src={lawyer?.profileImage || '/default-avatar.png'} 
+                alt={lawyer?.name} 
                 className="w-36 h-36 rounded-full object-cover border-4 border-white shadow-lg"
               />
-              <div className="absolute -bottom-2 -right-2 bg-primary text-white rounded-full p-2">
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                  <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
-                </svg>
-              </div>
+              {lawyer?.isVerified && (
+                <div className="absolute -bottom-2 -right-2 bg-primary text-white rounded-full p-2">
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                  </svg>
+                </div>
+              )}
             </div>
             
             <div className="text-center md:text-left flex-1">
-              <h1 className="text-3xl font-bold text-white">{lawyer.name}</h1>
+              <h1 className="text-3xl font-bold text-white">{lawyer?.name}</h1>
               
-              <div className="mt-3 flex flex-wrap justify-center md:justify-start gap-2">
-                {lawyer.specializations.map((specialization, index) => (
-                  <span key={index} className="px-3 py-1 rounded-full bg-white/20 text-white text-sm">
-                    {specialization}
-                  </span>
-                ))}
-              </div>
+              {lawyer?.specializations && Array.isArray(lawyer.specializations) && lawyer.specializations.length > 0 && (
+                <div className="mt-3 flex flex-wrap justify-center md:justify-start gap-2">
+                  {lawyer.specializations.map((specialization, index) => (
+                    <span key={index} className="px-3 py-1 rounded-full bg-white/20 text-white text-sm">
+                      {specialization}
+                    </span>
+                  ))}
+                </div>
+              )}
               
               <div className="mt-4 grid grid-cols-2 md:grid-cols-4 gap-4">
                 <div className="text-center">
@@ -199,7 +222,7 @@ const LawyerProfilePage = () => {
                     <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2 text-primary" viewBox="0 0 20 20" fill="currentColor">
                       <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 11-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clipRule="evenodd" />
                     </svg>
-                    <span className="font-semibold">{lawyer.experience}</span>
+                    <span className="font-semibold">{lawyer?.yearsOfExperience || 0} years</span>
                   </div>
                   <p className="text-xs mt-1 text-white/80">Experience</p>
                 </div>
@@ -209,7 +232,7 @@ const LawyerProfilePage = () => {
                     <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2 text-primary" viewBox="0 0 20 20" fill="currentColor">
                       <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
                     </svg>
-                    <span className="font-semibold">{lawyer.rating} ({lawyer.reviewCount})</span>
+                    <span className="font-semibold">{lawyer?.rating || 0} ({lawyer?.reviewCount || 0})</span>
                   </div>
                   <p className="text-xs mt-1 text-white/80">Rating</p>
                 </div>
@@ -219,19 +242,19 @@ const LawyerProfilePage = () => {
                     <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2 text-primary" viewBox="0 0 20 20" fill="currentColor">
                       <path fillRule="evenodd" d="M10 1.944A11.954 11.954 0 012.166 5C2.056 5.649 2 6.319 2 7c0 5.225 3.34 9.67 8 11.317C14.66 16.67 18 12.225 18 7c0-.682-.057-1.35-.166-2.001A11.954 11.954 0 0110 1.944zM11 14a1 1 0 11-2 0 1 1 0 012 0zm0-7a1 1 0 10-2 0v3a1 1 0 102 0V7z" clipRule="evenodd" />
                     </svg>
-                    <span className="font-semibold">{lawyer.caseWinRate}</span>
+                    <span className="font-semibold">{lawyer?.caseCount || 0} cases</span>
                   </div>
-                  <p className="text-xs mt-1 text-white/80">Success Rate</p>
+                  <p className="text-xs mt-1 text-white/80">Case Count</p>
                 </div>
                 
                 <div className="text-center">
                   <div className="flex items-center justify-center md:justify-start">
                     <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2 text-primary" viewBox="0 0 20 20" fill="currentColor">
-                      <path fillRule="evenodd" d="M4 4a2 2 0 012-2h8a2 2 0 012 2v12a1 1 0 01-1.581.814l-4.419-3.35-4.419 3.35A1 1 0 014 16V4zm3.707 4.707a1 1 0 00-1.414-1.414L5 8.586 3.707 7.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l2-2z" clipRule="evenodd" />
+                      <path fillRule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clipRule="evenodd" />
                     </svg>
-                    <span className="font-semibold">{lawyer.availability.nextAvailable}</span>
+                    <span className="font-semibold">{lawyer?.location || 'Location not specified'}</span>
                   </div>
-                  <p className="text-xs mt-1 text-white/80">Available In</p>
+                  <p className="text-xs mt-1 text-white/80">Location</p>
                 </div>
               </div>
             </div>
@@ -260,16 +283,6 @@ const LawyerProfilePage = () => {
               }`}
             >
               Practice Areas
-            </button>
-            <button
-              onClick={() => setActiveTab('education')}
-              className={`py-4 px-6 font-medium text-sm border-b-2 transition-colors whitespace-nowrap ${
-                activeTab === 'education' 
-                  ? 'border-primary text-primary' 
-                  : 'border-transparent text-gray-500 hover:text-gray-700'
-              }`}
-            >
-              Education & Credentials
             </button>
             <button
               onClick={() => setActiveTab('reviews')}
@@ -301,48 +314,122 @@ const LawyerProfilePage = () => {
         <div className="md:col-span-2 bg-white rounded-xl shadow-md p-6">
           {activeTab === 'about' && (
             <div>
-              <h2 className="text-xl font-semibold mb-4">About {lawyer.name}</h2>
-              <p className="text-gray-700 mb-6 leading-relaxed">{lawyer.about}</p>
+              <h2 className="text-xl font-semibold mb-4">About {lawyer?.name}</h2>
+              <p className="text-gray-700 mb-6 leading-relaxed">{lawyer?.bio || 'No bio available'}</p>
               
-              <h3 className="text-lg font-medium mb-3">Languages</h3>
-              <div className="flex flex-wrap gap-2 mb-6">
-                {lawyer.languages.map((language, index) => (
-                  <span key={index} className="px-3 py-1 bg-gray-100 rounded-full text-gray-700 text-sm">
-                    {language}
-                  </span>
-                ))}
+              {/* Professional Summary */}
+              <div className="bg-gray-50 rounded-lg p-4 mb-6">
+                <h3 className="text-lg font-medium mb-3">Professional Summary</h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <p className="text-gray-600">Years of Experience</p>
+                    <p className="font-medium">{lawyer?.yearsOfExperience || 0} years</p>
+                  </div>
+                  <div>
+                    <p className="text-gray-600">Cases Handled</p>
+                    <p className="font-medium">{lawyer?.caseCount || 0} cases</p>
+                  </div>
+                  <div>
+                    <p className="text-gray-600">Bar ID</p>
+                    <p className="font-medium">{lawyer?.barId || 'Not provided'}</p>
+                  </div>
+                  <div>
+                    <p className="text-gray-600">Hourly Rate</p>
+                    <p className="font-medium">${lawyer?.hourlyRate || 0}/hr</p>
+                  </div>
+                </div>
               </div>
-              
+
+              {/* Contact Information */}
+              <div className="bg-gray-50 rounded-lg p-4">
+                <h3 className="text-lg font-medium mb-3">Contact Information</h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <p className="text-gray-600">Email</p>
+                    <p className="font-medium">{lawyer?.email}</p>
+                  </div>
+                  <div>
+                    <p className="text-gray-600">Phone</p>
+                    <p className="font-medium">{lawyer?.phone || 'Not provided'}</p>
+                  </div>
+                  <div>
+                    <p className="text-gray-600">Location</p>
+                    <p className="font-medium">{lawyer?.location || 'Not specified'}</p>
+                  </div>
+                  <div>
+                    <p className="text-gray-600">Office Address</p>
+                    <p className="font-medium">{lawyer?.address || 'Not provided'}</p>
+                  </div>
+                </div>
+              </div>
             </div>
           )}
           
           {activeTab === 'practice' && (
             <div>
-              <h2 className="text-xl font-semibold mb-4">Practice Focus</h2>
+              <h2 className="text-xl font-semibold mb-4">Practice Areas</h2>
               <p className="text-gray-700 mb-6">
-                {lawyer.name} specializes in the following areas of law:
+                {lawyer?.name} specializes in the following areas of law:
               </p>
               
-              <div className="space-y-4 mb-6">
-                {lawyer.practiceFocus.map((area, index) => (
-                  <div key={index}>
-                    <div className="flex justify-between mb-1">
-                      <span className="text-gray-700">{area.area}</span>
-                      <span className="text-gray-500">{area.percentage}%</span>
+              {lawyer?.specializations && Array.isArray(lawyer.specializations) && lawyer.specializations.length > 0 ? (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+                  {lawyer.specializations.map((specialization, index) => (
+                    <div key={index} className="bg-gray-50 rounded-lg p-4 border border-gray-200">
+                      <div className="flex items-center">
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-primary mr-2" viewBox="0 0 20 20" fill="currentColor">
+                          <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                        </svg>
+                        <span className="font-medium text-gray-800">{specialization}</span>
+                      </div>
                     </div>
-                    <div className="w-full bg-gray-200 rounded-full h-2">
-                      <div 
-                        className="bg-primary h-2 rounded-full" 
-                        style={{ width: `${area.percentage}%` }}
-                      ></div>
-                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-gray-500 italic">No specializations listed yet.</p>
+              )}
+
+              {/* Additional lawyer details */}
+              <div className="mt-8 grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="bg-gray-50 rounded-lg p-4">
+                  <h3 className="font-medium text-gray-800 mb-2">Professional Information</h3>
+                  <div className="space-y-2">
+                    <p><span className="text-gray-600">Bar ID:</span> {lawyer?.barId || 'Not provided'}</p>
+                    <p><span className="text-gray-600">Years of Experience:</span> {lawyer?.yearsOfExperience || 0}</p>
+                    <p><span className="text-gray-600">Case Count:</span> {lawyer?.caseCount || 0}</p>
+                    <p><span className="text-gray-600">Hourly Rate:</span> ${lawyer?.hourlyRate || 0}/hr</p>
+                    <p><span className="text-gray-600">Location:</span> {lawyer?.location || 'Not specified'}</p>
                   </div>
-                ))}
+                </div>
+                
+                <div className="bg-gray-50 rounded-lg p-4">
+                  <h3 className="font-medium text-gray-800 mb-2">Verification Status</h3>
+                  <div className="space-y-2">
+                    <p className="flex items-center">
+                      <span className="text-gray-600 mr-2">Verified:</span>
+                      {lawyer?.isVerified ? (
+                        <span className="text-green-600 flex items-center">
+                          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-1" viewBox="0 0 20 20" fill="currentColor">
+                            <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                          </svg>
+                          Verified
+                        </span>
+                      ) : (
+                        <span className="text-gray-500">Not verified</span>
+                      )}
+                    </p>
+                    <p className="flex items-center">
+                      <span className="text-gray-600 mr-2">Status:</span>
+                      {lawyer?.isActive ? (
+                        <span className="text-green-600">Active</span>
+                      ) : (
+                        <span className="text-red-600">Inactive</span>
+                      )}
+                    </p>
+                    <p><span className="text-gray-600">Rating:</span> {lawyer?.rating || 0} ({lawyer?.reviewCount || 0} reviews)</p>
+                  </div>
+                </div>
               </div>
-              
-              <p className="text-gray-700">
-                With a strong background in family law and civil litigation, {lawyer.name} has successfully represented clients in various legal matters, providing expert advice and representation.
-              </p>
             </div>
           )}
           
@@ -435,7 +522,7 @@ const LawyerProfilePage = () => {
                 </svg>
                 <div>
                   <p className="text-sm text-gray-500">Email</p>
-                  <p className="text-gray-800">{lawyer.contactInfo.email}</p>
+                  <p className="text-gray-800">{lawyer?.email}</p>
                 </div>
               </div>
               
@@ -445,7 +532,7 @@ const LawyerProfilePage = () => {
                 </svg>
                 <div>
                   <p className="text-sm text-gray-500">Phone</p>
-                  <p className="text-gray-800">{lawyer.contactInfo.phone}</p>
+                  <p className="text-gray-800">{lawyer?.phone}</p>
                 </div>
               </div>
               
@@ -455,7 +542,7 @@ const LawyerProfilePage = () => {
                 </svg>
                 <div>
                   <p className="text-sm text-gray-500">Office</p>
-                  <p className="text-gray-800">{lawyer.contactInfo.office}</p>
+                  <p className="text-gray-800">{lawyer?.address}</p>
                 </div>
               </div>
             </div>
