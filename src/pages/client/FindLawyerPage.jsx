@@ -160,27 +160,47 @@ const FindLawyerPage = () => {
 
   // Filter lawyers based on selected filters
   const filteredLawyers = lawyers.filter(lawyer => {
-    // Filter by search
-    if (search && !lawyer.name.toLowerCase().includes(search.toLowerCase()) && 
-        !lawyer.specializations.some(s => s.toLowerCase().includes(search.toLowerCase())) &&
-        !lawyer.location.toLowerCase().includes(search.toLowerCase())) {
-      return false
+    // Search filter - check name, specializations, location, and bio
+    if (search) {
+      const searchLower = search.toLowerCase()
+      const searchFields = [
+        lawyer.name,
+        lawyer.location,
+        lawyer.bio,
+        ...lawyer.specializations
+      ]
+      
+      if (!searchFields.some(field => 
+        field && field.toString().toLowerCase().includes(searchLower)
+      )) {
+        return false
+      }
     }
     
-    // Filter by specializations
-    if (selectedSpecializations.length > 0 && 
-        !lawyer.specializations.some(s => selectedSpecializations.includes(s))) {
-      return false
+    // Specializations filter - check if lawyer has ANY of the selected specializations
+    if (selectedSpecializations.length > 0) {
+      const hasMatchingSpecialization = lawyer.specializations.some(spec => 
+        selectedSpecializations.includes(spec)
+      )
+      if (!hasMatchingSpecialization) {
+        return false
+      }
     }
     
-    // Filter by rating
-    if (ratingFilter > 0 && lawyer.rating < ratingFilter) {
-      return false
+    // Rating filter - check if lawyer's rating is greater than or equal to the filter
+    if (ratingFilter > 0) {
+      const lawyerRating = parseFloat(lawyer.rating) || 0
+      if (lawyerRating < ratingFilter) {
+        return false
+      }
     }
     
-    // Filter by experience
-    if (experienceFilter > 0 && lawyer.yearsOfExperience < experienceFilter) {
-      return false
+    // Experience filter - check if lawyer's experience is greater than or equal to the filter
+    if (experienceFilter > 0) {
+      const lawyerExperience = parseInt(lawyer.yearsOfExperience) || 0
+      if (lawyerExperience < experienceFilter) {
+        return false
+      }
     }
     
     return true
@@ -190,19 +210,31 @@ const FindLawyerPage = () => {
   const sortedLawyers = [...filteredLawyers].sort((a, b) => {
     switch (sortBy) {
       case 'rating':
-        return b.rating - a.rating
+        return (parseFloat(b.rating) || 0) - (parseFloat(a.rating) || 0)
       case 'experience':
-        return b.yearsOfExperience - a.yearsOfExperience
+        return (parseInt(b.yearsOfExperience) || 0) - (parseInt(a.yearsOfExperience) || 0)
       case 'caseCount':
-        return b.caseCount - a.caseCount
+        return (parseInt(b.caseCount) || 0) - (parseInt(a.caseCount) || 0)
       case 'hourlyRate_asc':
-        return a.hourlyRate - b.hourlyRate
+        return (parseFloat(a.hourlyRate) || 0) - (parseFloat(b.hourlyRate) || 0)
       case 'hourlyRate_desc':
-        return b.hourlyRate - a.hourlyRate
+        return (parseFloat(b.hourlyRate) || 0) - (parseFloat(a.hourlyRate) || 0)
       default:
         return 0
     }
   })
+
+  // Add console logging for debugging filters
+  useEffect(() => {
+    console.log('=== Filter Debug Info ===')
+    console.log('Search:', search)
+    console.log('Selected Specializations:', selectedSpecializations)
+    console.log('Rating Filter:', ratingFilter)
+    console.log('Experience Filter:', experienceFilter)
+    console.log('Total Lawyers:', lawyers.length)
+    console.log('Filtered Lawyers:', filteredLawyers.length)
+    console.log('Sort By:', sortBy)
+  }, [search, selectedSpecializations, ratingFilter, experienceFilter, lawyers.length, filteredLawyers.length, sortBy])
 
   if (isLoading) {
     return (
@@ -307,7 +339,9 @@ const FindLawyerPage = () => {
                   onChange={(e) => setRatingFilter(parseFloat(e.target.value))}
                   className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"
                 />
-                <span className="w-10 text-sm text-gray-700">{ratingFilter > 0 ? ratingFilter : 'Any'}</span>
+                <span className="w-12 text-sm text-gray-700">
+                  {ratingFilter > 0 ? `${ratingFilter}★` : 'Any'}
+                </span>
               </div>
             </div>
             
@@ -321,11 +355,14 @@ const FindLawyerPage = () => {
                   type="range"
                   min="0"
                   max="20"
+                  step="1"
                   value={experienceFilter}
                   onChange={(e) => setExperienceFilter(parseInt(e.target.value))}
                   className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"
                 />
-                <span className="w-10 text-sm text-gray-700">{experienceFilter > 0 ? experienceFilter : 'Any'}</span>
+                <span className="w-12 text-sm text-gray-700">
+                  {experienceFilter > 0 ? `${experienceFilter}y` : 'Any'}
+                </span>
               </div>
             </div>
             
