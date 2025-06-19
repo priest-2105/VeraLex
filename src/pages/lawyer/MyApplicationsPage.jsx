@@ -1,57 +1,12 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
+import { databases } from '../../appwrite/appwrite'
+import { useAuth } from '../../context/AuthContext'
+import { ID, Query } from 'appwrite'
 
-// Mock data for applications
-const mockApplications = [
-  {
-    id: 'app-1',
-    caseId: 'case-1',
-    caseTitle: 'International Trademark Registration Assistance',
-    clientName: 'TechSolutions Inc.',
-    clientPhoto: 'https://randomuser.me/api/portraits/men/32.jpg',
-    appliedAt: '2023-07-02',
-    status: 'pending',
-    proposedFee: '$3,500',
-    estimatedTime: '3 weeks',
-    cover: 'I have extensive experience with international trademark registrations across multiple jurisdictions including the EU, UK, and several Asian countries. Ive successfully handled similar cases for technology companies and can ensure a smooth process for your trademark registration needs.'
-  },
-  {
-    id: 'app-2',
-    caseId: 'case-2',
-    caseTitle: 'Employment Contract Review for Tech Startup',
-    clientName: 'InnovateTech',
-    clientPhoto: 'https://randomuser.me/api/portraits/women/28.jpg',
-    appliedAt: '2023-06-30',
-    status: 'in_review',
-    proposedFee: '$2,000',
-    estimatedTime: '1 week',
-    cover: 'With my background in employment law specifically for technology companies, I can provide comprehensive review of your executive employment contracts. I understand the unique needs of startups and can help ensure your contracts are both protective and attractive to potential executives.'
-  },
-  {
-    id: 'app-3',
-    caseId: 'case-3',
-    caseTitle: 'Corporate Restructuring Assistance',
-    clientName: 'Midwest Manufacturing',
-    clientPhoto: 'https://randomuser.me/api/portraits/men/42.jpg',
-    appliedAt: '2023-06-27',
-    status: 'rejected',
-    proposedFee: '$12,000',
-    estimatedTime: '2 months',
-    cover: 'I have handled corporate restructuring for manufacturing companies of similar size and can provide comprehensive legal guidance on structure, tax implications, and employee transitions. My experience includes working with companies undergoing similar transformations in the Midwest region.'
-  },
-  {
-    id: 'app-4',
-    caseId: 'case-4',
-    caseTitle: 'Software License Agreement Review',
-    clientName: 'CloudSoft Systems',
-    clientPhoto: 'https://randomuser.me/api/portraits/women/56.jpg',
-    appliedAt: '2023-06-29',
-    status: 'accepted',
-    proposedFee: '$2,500',
-    estimatedTime: '10 days',
-    cover: 'As a lawyer specializing in software licensing, I have negotiated hundreds of SaaS agreements for enterprise clients. I understand both the technical and legal aspects of these agreements and can ensure your interests are protected while maintaining positive client relationships.'
-  }
-]
+// Constants
+const CASES_COLLECTION_ID = 'cases'
+const CASE_DETAILS_COLLECTION_ID = 'caseDetails'
 
 // Helper function to format date
 const formatDate = (dateString) => {
@@ -77,11 +32,95 @@ const getStatusBadge = (status) => {
 
 const MyApplicationsPage = () => {
   const [activeFilter, setActiveFilter] = useState('all')
-  
+  const [applications, setApplications] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(null)
+  const { currentUser } = useAuth()
+
+  useEffect(() => {
+    const fetchApplications = async () => {
+      if (!currentUser?.$id) return
+
+      try {
+        setLoading(true)
+        setError(null)
+
+        // Fetch all case details where the current lawyer has applied
+        const response = await databases.listDocuments(
+          CASE_DETAILS_COLLECTION_ID,
+          [
+            Query.search('applications', currentUser.$id),
+            Query.limit(100)
+          ]
+        )
+
+        // Process the applications
+        const processedApplications = await Promise.all(
+          response.documents.map(async (caseDetail) => {
+            // Get the corresponding case data
+            const caseData = await databases.getDocument(
+              CASES_COLLECTION_ID,
+              caseDetail.caseId
+            )
+
+            // Find this lawyer's application
+            const lawyerApplication = caseDetail.applications
+              .map(app => typeof app === 'string' ? JSON.parse(app) : app)
+              .find(app => app.lawyerId === currentUser.$id)
+
+            return {
+              id: `${caseDetail.caseId}-${currentUser.$id}`,
+              caseId: caseDetail.caseId,
+              caseTitle: caseData.title,
+              clientName: caseData.clientName,
+              clientPhoto: caseData.clientPhoto || 'https://randomuser.me/api/portraits/lego/1.jpg',
+              appliedAt: lawyerApplication?.submittedAt || caseDetail.lastUpdated,
+              status: lawyerApplication?.status || 'pending',
+              cover: lawyerApplication?.message || '',
+              caseType: caseData.caseType,
+              caseStatus: caseData.status
+            }
+          })
+        )
+
+        setApplications(processedApplications)
+      } catch (err) {
+        console.error('Error fetching applications:', err)
+        setError('Failed to load applications. Please try again later.')
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    fetchApplications()
+  }, [currentUser?.$id])
+
   // Filter applications based on selected status
   const filteredApplications = activeFilter === 'all' 
-    ? mockApplications 
-    : mockApplications.filter(app => app.status === activeFilter)
+    ? applications 
+    : applications.filter(app => app.status === activeFilter)
+
+  if (loading) {
+    return (
+      <div className="flex justify-center items-center min-h-[400px]">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div className="text-center py-8">
+        <div className="text-red-600 mb-4">{error}</div>
+        <button 
+          onClick={() => window.location.reload()} 
+          className="btn btn-primary"
+        >
+          Try Again
+        </button>
+      </div>
+    )
+  }
 
   return (
     <div>
@@ -143,6 +182,9 @@ const MyApplicationsPage = () => {
                       <span className="text-xs text-gray-500 ml-2">Applied on {formatDate(application.appliedAt)}</span>
                     </div>
                     <h3 className="text-xl font-medium text-gray-900 mb-1">{application.caseTitle}</h3>
+                    <div className="text-sm text-gray-600">
+                      Case Type: {application.caseType} • Status: {application.caseStatus}
+                    </div>
                   </div>
                   <div className="flex items-center">
                     <img 
@@ -160,17 +202,6 @@ const MyApplicationsPage = () => {
                 <div className="bg-gray-50 p-4 rounded-md mb-4">
                   <div className="text-sm font-medium text-gray-700 mb-2">Your Application</div>
                   <p className="text-gray-600 text-sm">{application.cover}</p>
-                </div>
-                
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                  <div>
-                    <div className="text-xs text-gray-500">Proposed Fee</div>
-                    <div className="font-medium">{application.proposedFee}</div>
-                  </div>
-                  <div>
-                    <div className="text-xs text-gray-500">Estimated Time</div>
-                    <div className="font-medium">{application.estimatedTime}</div>
-                  </div>
                 </div>
                 
                 <div className="flex justify-between items-center">
@@ -204,7 +235,10 @@ const MyApplicationsPage = () => {
                       </button>
                     )}
                     {application.status === 'accepted' && (
-                      <button className="btn btn-primary text-sm py-1 px-4">
+                      <button 
+                        onClick={() => window.location.href = `/lawyer/cases/${application.caseId}`}
+                        className="btn btn-primary text-sm py-1 px-4"
+                      >
                         View Case Details
                       </button>
                     )}
@@ -220,7 +254,12 @@ const MyApplicationsPage = () => {
             </svg>
             <h3 className="text-xl font-medium text-gray-900 mb-2">No applications found</h3>
             <p className="text-gray-600 mb-4">You haven't applied to any cases yet.</p>
-            <button className="btn btn-primary">Browse Available Cases</button>
+            <button 
+              onClick={() => window.location.href = '/lawyer/cases'}
+              className="btn btn-primary"
+            >
+              Browse Available Cases
+            </button>
           </div>
         )}
       </div>

@@ -1,9 +1,9 @@
 import { useState, useEffect } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { useSelector } from 'react-redux'
 import { databases } from '../../lib/appwrite'
-import { Query } from 'appwrite'
+import { Query, ID } from 'appwrite'
 import { selectCurrentUser } from '../../store/authSlice'
 import LoadingSpinner from '../../components/common/LoadingSpinner'
 
@@ -37,7 +37,9 @@ const formatDate = (dateString) => {
 }
 
 const AvailableCasesPage = () => {
+  const navigate = useNavigate()
   const [cases, setCases] = useState([])
+  const [casesWithStatus, setCasesWithStatus] = useState([])
   const [selectedType, setSelectedType] = useState('All Types')
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedRole, setSelectedRole] = useState('All Roles')
@@ -45,6 +47,9 @@ const AvailableCasesPage = () => {
   const [sortBy, setSortBy] = useState('recent') // 'recent' or 'oldest'
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState('')
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [applicationModal, setApplicationModal] = useState({ isOpen: false, caseId: null })
+  const [applicationMessage, setApplicationMessage] = useState('')
   const currentUser = useSelector(selectCurrentUser)
 
   // Fetch available cases
@@ -60,16 +65,7 @@ const AvailableCasesPage = () => {
       setError('')
 
       try {
-        
-        // First fetch ALL cases without any filters
-        const allCasesResponse = await databases.listDocuments(
-          DATABASE_ID,
-          CASES_COLLECTION_ID,
-          [Query.orderDesc('createdAt')]
-        )
-
-       
-        // Now fetch active cases
+        // Fetch active cases
         const activeCasesResponse = await databases.listDocuments(
           DATABASE_ID,
           CASES_COLLECTION_ID,
@@ -79,23 +75,45 @@ const AvailableCasesPage = () => {
           ]
         )
 
-        // Map the active cases
-        const mappedCases = activeCasesResponse.documents.map(caseDoc => {
-          return {
-            id: caseDoc.$id,
-            title: caseDoc.title,
-            description: caseDoc.description,
-            type: caseDoc.caseType,
-            budget: caseDoc.budget,
-            role: caseDoc.role,
-            status: caseDoc.status,
-            postedAt: caseDoc.createdAt,
-            updatedAt: caseDoc.updatedAt,
-            userId: caseDoc.userId
-          }
-        })
+        const mappedCases = activeCasesResponse.documents.map(caseDoc => ({
+          id: caseDoc.$id,
+          title: caseDoc.title,
+          description: caseDoc.description,
+          type: caseDoc.caseType,
+          budget: caseDoc.budget,
+          role: caseDoc.role,
+          status: caseDoc.status,
+          postedAt: caseDoc.createdAt,
+          updatedAt: caseDoc.updatedAt,
+          userId: caseDoc.userId
+        }))
 
         setCases(mappedCases)
+
+        // Fetch case details for each case to check if the current user has applied
+        const detailsResponses = await Promise.all(
+          mappedCases.map(c =>
+            databases.listDocuments(
+              DATABASE_ID,
+              CASE_DETAILS_COLLECTION_ID,
+              [Query.equal('caseId', c.id)]
+            ).then(res => res.documents[0] || null)
+          )
+        )
+
+        // Add hasApplied property
+        const casesWithStatus = mappedCases.map((c, idx) => {
+          const details = detailsResponses[idx]
+          let hasApplied = false
+          if (details && details.applications) {
+            hasApplied = details.applications.some(app => {
+              const parsedApp = typeof app === 'string' ? JSON.parse(app) : app
+              return parsedApp.lawyerId === currentUser.$id
+            })
+          }
+          return { ...c, hasApplied }
+        })
+        setCasesWithStatus(casesWithStatus)
       } catch (error) {
         setError('Failed to load available cases. Please try again.')
       } finally {
@@ -125,8 +143,129 @@ const AvailableCasesPage = () => {
     }
   }
 
+  // Function to handle application submission
+  const handleApply = async (caseId) => {
+    if (!currentUser?.$id) {
+      setError('You must be logged in to apply for cases')
+      return
+    }
+
+    if (!applicationMessage.trim()) {
+      setError('Please provide a cover letter for your application')
+      return
+    }
+
+    setIsSubmitting(true)
+    setError('')
+
+    try {
+      // First, get the case details
+      const caseDetailsResponse = await databases.listDocuments(
+        DATABASE_ID,
+        CASE_DETAILS_COLLECTION_ID,
+        [Query.equal('caseId', caseId)]
+      )
+
+      const currentTime = new Date().toISOString()
+      const applicationData = {
+        lawyerId: currentUser.$id,
+        message: applicationMessage,
+        submittedAt: currentTime,
+        status: 'pending'
+      }
+
+      if (caseDetailsResponse.documents.length > 0) {
+        // Update existing case details
+        const existingDetails = caseDetailsResponse.documents[0]
+        const existingApplications = existingDetails.applications || []
+        
+        // Check if lawyer has already applied
+        const hasApplied = existingApplications.some(app => {
+          const parsedApp = typeof app === 'string' ? JSON.parse(app) : app
+          return parsedApp.lawyerId === currentUser.$id
+        })
+
+        if (hasApplied) {
+          setError('You have already applied to this case')
+          setIsSubmitting(false)
+          return
+        }
+
+        // Add new application
+        const updatedApplications = [...existingApplications, JSON.stringify(applicationData)]
+        
+        await databases.updateDocument(
+          DATABASE_ID,
+          CASE_DETAILS_COLLECTION_ID,
+          existingDetails.$id,
+          {
+            applications: updatedApplications,
+            lastUpdated: currentTime
+          }
+        )
+      } else {
+        // Create new case details
+        await databases.createDocument(
+          DATABASE_ID,
+          CASE_DETAILS_COLLECTION_ID,
+          ID.unique(),
+          {
+            caseId,
+            applications: [JSON.stringify(applicationData)],
+            lastUpdated: currentTime
+          }
+        )
+      }
+
+      // Create notification for the client
+      await databases.createDocument(
+        DATABASE_ID,
+        'notifications',
+        ID.unique(),
+        {
+          userId: cases.find(c => c.id === caseId)?.userId,
+          type: 'new_application',
+          title: 'New Case Application',
+          message: `A lawyer has applied to your case "${cases.find(c => c.id === caseId)?.title}"`,
+          caseId,
+          lawyerId: currentUser.$id,
+          read: false,
+          createdAt: currentTime
+        }
+      )
+
+      // Create notification for the lawyer
+      await databases.createDocument(
+        DATABASE_ID,
+        'notifications',
+        ID.unique(),
+        {
+          userId: currentUser.$id,
+          type: 'application_submitted',
+          title: 'Application Submitted',
+          message: `Your application for "${cases.find(c => c.id === caseId)?.title}" has been submitted successfully`,
+          caseId,
+          read: false,
+          createdAt: currentTime
+        }
+      )
+
+      // Close modal and reset form
+      setApplicationModal({ isOpen: false, caseId: null })
+      setApplicationMessage('')
+      
+      // Navigate to my applications page
+      navigate('/lawyer/applications')
+    } catch (err) {
+      console.error('Error submitting application:', err)
+      setError('Failed to submit application. Please try again.')
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+
   // Filter cases based on all criteria
-  const filteredCases = cases.filter(caseItem => {
+  const filteredCases = casesWithStatus.filter(caseItem => {
     const matchesType = selectedType === 'All Types' || caseItem.type === selectedType
     const matchesRole = selectedRole === 'All Roles' || caseItem.role === selectedRole
     const matchesSearch = 
@@ -282,6 +421,62 @@ const AvailableCasesPage = () => {
         </div>
       )} */}
 
+      {/* Application Modal */}
+      {applicationModal.isOpen && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-xl p-6 max-w-lg w-full">
+            <h3 className="text-xl font-medium text-gray-900 mb-4">Apply to Case</h3>
+            
+            {error && (
+              <div className="mb-4 p-3 bg-red-50 text-red-600 rounded-md">
+                {error}
+              </div>
+            )}
+
+            <div className="mb-4">
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Cover Letter
+              </label>
+              <textarea
+                value={applicationMessage}
+                onChange={(e) => setApplicationMessage(e.target.value)}
+                placeholder="Explain why you're the best fit for this case..."
+                className="textarea textarea-bordered w-full h-32 border border-gray-300 focus:border-primary focus:ring-1 focus:ring-primary"
+                disabled={isSubmitting}
+              />
+            </div>
+
+            <div className="flex justify-end gap-3">
+              <button
+                onClick={() => {
+                  setApplicationModal({ isOpen: false, caseId: null })
+                  setApplicationMessage('')
+                  setError('')
+                }}
+                className="btn btn-outline"
+                disabled={isSubmitting}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => handleApply(applicationModal.caseId)}
+                className="btn btn-primary"
+                disabled={isSubmitting}
+              >
+                {isSubmitting ? (
+                  <>
+                    <span className="animate-spin mr-2">⏳</span>
+                    Submitting...
+                  </>
+                ) : (
+                  'Submit Application'
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Case List */}
       <div className="space-y-6">
         {filteredCases.length > 0 ? (
@@ -304,6 +499,9 @@ const AvailableCasesPage = () => {
                       {caseItem.status.charAt(0).toUpperCase() + caseItem.status.slice(1)}
                     </span>
                     <span className="text-xs text-gray-500 ml-2">Posted {formatDate(caseItem.postedAt)}</span>
+                    {caseItem.hasApplied && (
+                      <span className="ml-3 px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded">Applied</span>
+                    )}
                   </div>
                   <h3 className="text-xl font-medium text-gray-900 mb-2">{caseItem.title}</h3>
                   <p className="text-gray-600 mb-4">{caseItem.description}</p>
@@ -336,9 +534,17 @@ const AvailableCasesPage = () => {
                     View Details
                   </Link>
                   <button 
+                    onClick={() => {
+                      if (!caseItem.hasApplied && caseItem.status === 'pending') {
+                        setApplicationModal({ isOpen: true, caseId: caseItem.id })
+                      }
+                    }}
                     className="btn btn-outline w-full"
+                    disabled={caseItem.status !== 'pending' || caseItem.hasApplied}
                   >
-                    Save
+                    {caseItem.hasApplied
+                      ? 'Applied'
+                      : (caseItem.status === 'pending' ? 'Apply Now' : 'Not Accepting Applications')}
                   </button>
                 </div>
               </div>
