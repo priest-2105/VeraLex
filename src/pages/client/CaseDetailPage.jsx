@@ -6,6 +6,8 @@ import { ID, Query } from 'appwrite'
 import { useSelector } from 'react-redux'
 import { selectCurrentUser } from '../../store/authSlice'
 import Alert from '../../components/common/Alert'
+import LoadingSpinner from '../../components/common/LoadingSpinner'
+import LogoutConfirmationModal from '../../components/common/LogoutConfirmationModal'
 
 // Appwrite collection IDs
 const DATABASE_ID = import.meta.env.VITE_APPWRITE_DATABASE_ID
@@ -13,6 +15,8 @@ const CASES_COLLECTION_ID = import.meta.env.VITE_APPWRITE_CASES_COLLECTION_ID
 const CASE_DETAILS_COLLECTION_ID = import.meta.env.VITE_APPWRITE_CASE_DETAILS_COLLECTION_ID
 const CASE_DOCUMENTS_BUCKET_ID = import.meta.env.VITE_APPWRITE_CASE_DOCUMENTS_BUCKET_ID
 const USERS_COLLECTION_ID = import.meta.env.VITE_APPWRITE_USERS_COLLECTION_ID
+const PROFILE_COLLECTION_ID = import.meta.env.VITE_APPWRITE_PROFILE_COLLECTION_ID
+const LAWYER_DETAILS_COLLECTION_ID = import.meta.env.VITE_APPWRITE_LAWYER_DETAILS_COLLECTION_ID
 
 // Helper function to format date
 const formatDate = (dateString) => {
@@ -64,6 +68,14 @@ const CaseDetailPage = () => {
   const [applicationMessage, setApplicationMessage] = useState('')
   const [documents, setDocuments] = useState([])
   const [assignedLawyer, setAssignedLawyer] = useState(null)
+  const [applicants, setApplicants] = useState([])
+  const [applicantsLoading, setApplicantsLoading] = useState(false)
+  const [applicantsError, setApplicantsError] = useState('')
+  const [confirmModal, setConfirmModal] = useState({ open: false, type: '', lawyer: null })
+  const [actionLoading, setActionLoading] = useState(false)
+  const [parsedApplications, setParsedApplications] = useState([])
+  const [applicationsLoading, setApplicationsLoading] = useState(false)
+  const [applicationsError, setApplicationsError] = useState('')
 
   const currentUser = useSelector(selectCurrentUser)
 
@@ -158,6 +170,97 @@ const CaseDetailPage = () => {
     fetchCaseData()
     }
   }, [id])
+
+  // Fetch applicants when lawyerRequests changes
+  useEffect(() => {
+    const fetchApplicants = async () => {
+      if (!caseDetails?.lawyerRequests?.length) {
+        setApplicants([])
+        return
+      }
+      setApplicantsLoading(true)
+      setApplicantsError('')
+      try {
+        // Fetch all profiles and details in parallel
+        const profilePromises = caseDetails.lawyerRequests.map(userId =>
+          databases.listDocuments(
+            DATABASE_ID,
+            PROFILE_COLLECTION_ID,
+            [Query.equal('userId', userId), Query.equal('role', 'lawyer'), Query.limit(1)]
+          )
+        )
+        const detailsPromises = caseDetails.lawyerRequests.map(userId =>
+          databases.listDocuments(
+            DATABASE_ID,
+            LAWYER_DETAILS_COLLECTION_ID,
+            [Query.equal('userId', userId), Query.limit(1)]
+          )
+        )
+        const profilesResults = await Promise.all(profilePromises)
+        const detailsResults = await Promise.all(detailsPromises)
+        const applicantsData = caseDetails.lawyerRequests.map((userId, idx) => {
+          const profile = profilesResults[idx].documents[0]
+          const details = detailsResults[idx].documents[0]
+          return {
+            userId,
+            id: profile?.$id || userId,
+            name: profile ? `${profile.firstName} ${profile.lastName}` : 'Unknown',
+            email: profile?.email || '',
+            phone: details?.phone || profile?.phone || '',
+            profileImage: details?.profileImage || profile?.profileImage || '',
+            specializations: details?.specializations || [],
+            rating: details?.rating || 0,
+            reviewCount: details?.reviewCount || 0,
+            yearsOfExperience: details?.yearsOfExperience || 0,
+            location: details?.location || '',
+            bio: details?.bio || profile?.bio || '',
+            barId: details?.barId || '',
+            isVerified: details?.isVerified || false,
+          }
+        })
+        setApplicants(applicantsData)
+      } catch (err) {
+        setApplicantsError('Failed to load applicants. Please try again.')
+      } finally {
+        setApplicantsLoading(false)
+      }
+    }
+    fetchApplicants()
+  }, [caseDetails?.lawyerRequests])
+
+  // Fetch and parse applications when caseDetails.applications changes
+  useEffect(() => {
+    const fetchApplications = async () => {
+      if (!caseDetails?.applications?.length) {
+        setParsedApplications([])
+        return
+      }
+      setApplicationsLoading(true)
+      setApplicationsError('')
+      try {
+        // Parse each application and fetch lawyer info
+        const appObjs = caseDetails.applications.map(appStr => JSON.parse(appStr))
+        const profilePromises = appObjs.map(app =>
+          databases.listDocuments(
+            DATABASE_ID,
+            PROFILE_COLLECTION_ID,
+            [Query.equal('userId', app.lawyerId), Query.equal('role', 'lawyer'), Query.limit(1)]
+          )
+        )
+        const profiles = await Promise.all(profilePromises)
+        const combined = appObjs.map((app, idx) => ({
+          ...app,
+          profile: profiles[idx].documents[0],
+        }))
+        setParsedApplications(combined)
+      } catch (err) {
+        setApplicationsError('Failed to load applications. Please try again.')
+      } finally {
+        setApplicationsLoading(false)
+      }
+    }
+    fetchApplications()
+  }, [caseDetails?.applications])
 
   const handleSendMessage = async (e) => {
     e.preventDefault()
@@ -391,6 +494,54 @@ const CaseDetailPage = () => {
     }
   }
 
+  const handleAcceptLawyer = async (lawyer) => {
+    setActionLoading(true)
+    try {
+      await databases.updateDocument(
+        DATABASE_ID,
+        CASE_DETAILS_COLLECTION_ID,
+        caseDetails.$id,
+        {
+          lawyerAssigned: lawyer.userId,
+          lawyerRequests: [],
+          lastUpdated: new Date().toISOString(),
+        }
+      )
+      await addTimelineEvent(`Lawyer ${lawyer.name} (${lawyer.userId}) was assigned to the case`)
+      setCaseDetails(prev => ({ ...prev, lawyerAssigned: lawyer.userId, lawyerRequests: [] }))
+      setApplicants([])
+      setConfirmModal({ open: false, type: '', lawyer: null })
+    } catch (err) {
+      setApplicantsError('Failed to accept lawyer. Please try again.')
+    } finally {
+      setActionLoading(false)
+    }
+  }
+
+  const handleRejectLawyer = async (lawyer) => {
+    setActionLoading(true)
+    try {
+      const updatedRequests = (caseDetails.lawyerRequests || []).filter(id => id !== lawyer.userId)
+      await databases.updateDocument(
+        DATABASE_ID,
+        CASE_DETAILS_COLLECTION_ID,
+        caseDetails.$id,
+        {
+          lawyerRequests: updatedRequests,
+          lastUpdated: new Date().toISOString(),
+        }
+      )
+      await addTimelineEvent(`Lawyer ${lawyer.name} (${lawyer.userId}) was rejected for the case`)
+      setCaseDetails(prev => ({ ...prev, lawyerRequests: updatedRequests }))
+      setApplicants(prev => prev.filter(a => a.userId !== lawyer.userId))
+      setConfirmModal({ open: false, type: '', lawyer: null })
+    } catch (err) {
+      setApplicantsError('Failed to reject lawyer. Please try again.')
+    } finally {
+      setActionLoading(false)
+    }
+  }
+
   // Update the messages tab to show disabled state when no lawyer is assigned
   const renderMessagesTab = () => {
     const isLawyerAssigned = Boolean(caseDetails?.lawyerAssigned)
@@ -440,35 +591,81 @@ const CaseDetailPage = () => {
 
   // Update the applicants tab to show lawyer requests
   const renderApplicantsTab = () => {
-    if (!caseDetails?.lawyerRequests?.length) {
+    if (applicantsLoading) {
+      return <div className="flex justify-center py-10"><LoadingSpinner /></div>
+    }
+    if (applicantsError) {
+      return <div className="text-center py-10 text-red-600">{applicantsError}</div>
+    }
+    if (!applicants.length) {
       return (
         <div className="text-center py-10">
           <p className="text-gray-500">No lawyer requests yet</p>
         </div>
       )
     }
-
     return (
       <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
-        <h2 className="text-lg font-semibold mb-4">Lawyer Requests</h2>
+        <h2 className="text-lg font-semibold mb-4">Lawyer Applicants</h2>
         <div className="space-y-6">
-          {caseDetails.lawyerRequests.map((lawyerId) => (
-            <div key={lawyerId} className="bg-white border border-gray-200 rounded-lg p-6">
-              <div className="flex justify-between items-center">
+          {applicants.map((lawyer) => (
+            <div key={lawyer.userId} className="bg-white border border-gray-200 rounded-lg p-6 flex flex-col md:flex-row md:items-center justify-between">
+              <div className="flex items-center gap-4 flex-1">
+                <img src={lawyer.profileImage || '/default-avatar.png'} alt={lawyer.name} className="w-16 h-16 rounded-full object-cover border" />
                 <div>
-                  <h3 className="text-lg font-medium">Lawyer ID: {lawyerId}</h3>
-                  {/* Here you would typically fetch and display more lawyer details */}
+                  <h3 className="text-lg font-medium text-gray-900">{lawyer.name}</h3>
+                  <p className="text-gray-600 text-sm">{lawyer.email}</p>
+                  <div className="flex flex-wrap gap-2 mt-1">
+                    {lawyer.specializations.map((spec, idx) => (
+                      <span key={idx} className="px-2 py-1 bg-primary/10 text-primary text-xs font-medium rounded">{spec}</span>
+                    ))}
+                  </div>
+                  <div className="flex items-center mt-1 text-xs text-gray-500">
+                    <span>Rating: {lawyer.rating} ({lawyer.reviewCount} reviews)</span>
+                    <span className="mx-2">|</span>
+                    <span>{lawyer.yearsOfExperience} yrs exp</span>
+                    {lawyer.location && <><span className="mx-2">|</span><span>{lawyer.location}</span></>}
+                  </div>
                 </div>
-                <button 
-                  onClick={() => handleAppointLawyer(lawyerId)}
+              </div>
+              <div className="flex flex-col gap-2 mt-4 md:mt-0 md:ml-6">
+                <button
                   className="btn btn-primary"
+                  onClick={() => setConfirmModal({ open: true, type: 'accept', lawyer })}
+                  disabled={actionLoading}
                 >
-                  Appoint Lawyer
+                  Accept
+                </button>
+                <button
+                  className="btn btn-outline text-red-600 border-red-200 hover:bg-red-50"
+                  onClick={() => setConfirmModal({ open: true, type: 'reject', lawyer })}
+                  disabled={actionLoading}
+                >
+                  Reject
                 </button>
               </div>
             </div>
           ))}
         </div>
+        {/* Confirmation Modal */}
+        <LogoutConfirmationModal
+          isOpen={confirmModal.open}
+          onClose={() => setConfirmModal({ open: false, type: '', lawyer: null })}
+          onConfirm={() => {
+            if (confirmModal.type === 'accept') handleAcceptLawyer(confirmModal.lawyer)
+            else if (confirmModal.type === 'reject') handleRejectLawyer(confirmModal.lawyer)
+          }}
+          isLoading={actionLoading}
+        >
+          <h2 className="text-xl font-semibold text-gray-800 mb-4">
+            {confirmModal.type === 'accept' ? 'Accept Lawyer?' : 'Reject Lawyer?'}
+          </h2>
+          <p className="text-gray-600 mb-6">
+            {confirmModal.type === 'accept'
+              ? `Are you sure you want to accept ${confirmModal.lawyer?.name} for this case?`
+              : `Are you sure you want to reject ${confirmModal.lawyer?.name}?`}
+          </p>
+        </LogoutConfirmationModal>
       </motion.div>
     )
   }
@@ -532,6 +729,38 @@ const CaseDetailPage = () => {
           </div>
         </div>
       </div>
+    )
+  }
+
+  // In the tab navigation, add the Applications tab
+  const renderApplicationsTab = () => {
+    if (applicationsLoading) return <div className="flex justify-center py-10"><LoadingSpinner /></div>
+    if (applicationsError) return <div className="text-center py-10 text-red-600">{applicationsError}</div>
+    if (!parsedApplications.length) return <div className="text-center py-10 text-gray-500">No applications yet.</div>
+    return (
+      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
+        <h2 className="text-lg font-semibold mb-4">Lawyer Applications</h2>
+        <div className="space-y-6">
+          {parsedApplications.map((app, idx) => (
+            <div key={idx} className="bg-white border border-gray-200 rounded-lg p-6 flex flex-col md:flex-row md:items-center justify-between">
+              <div className="flex items-center gap-4 flex-1">
+                <img src={app.profile?.profileImage || '/default-avatar.png'} alt={app.profile ? `${app.profile.firstName} ${app.profile.lastName}` : app.lawyerId} className="w-16 h-16 rounded-full object-cover border" />
+                <div>
+                  <h3 className="text-lg font-medium text-gray-900">{app.profile ? `${app.profile.firstName} ${app.profile.lastName}` : app.lawyerId}</h3>
+                  <p className="text-gray-600 text-sm">{app.profile?.email}</p>
+                </div>
+              </div>
+              <div className="flex-1 mt-4 md:mt-0 md:ml-6">
+                <div className="mb-2"><b>Cover Letter:</b> {app.coverLetter}</div>
+                <div className="mb-2"><b>Proposed Fee:</b> {app.proposedFee}</div>
+                <div className="mb-2"><b>Estimated Time:</b> {app.estimatedTime}</div>
+                <div className="mb-2"><b>Experience:</b> {app.yearsOfExperience} years</div>
+                <div className="mb-2"><b>Applied On:</b> {formatDate(app.appliedAt)}</div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </motion.div>
     )
   }
 
@@ -632,7 +861,6 @@ const CaseDetailPage = () => {
             >
               Overview
             </button>
-            {/* Conditionally render Applicants tab */}
             {currentUser.role === 'client' && !caseData.lawyer && (
               <button
                 onClick={() => setActiveTab('applicants')}
@@ -645,6 +873,16 @@ const CaseDetailPage = () => {
                 Applicants ({caseData.lawyerApplicants?.length || 0})
               </button>
             )}
+            <button
+              onClick={() => setActiveTab('applications')}
+              className={`flex-1 whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm text-center ${
+                activeTab === 'applications'
+                  ? 'border-primary text-primary'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+              }`}
+            >
+              Applications ({parsedApplications.length || 0})
+            </button>
             <button
               onClick={() => setActiveTab('documents')}
               className={`flex-1 whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm text-center ${
@@ -852,6 +1090,8 @@ const CaseDetailPage = () => {
             </div>
           </motion.div>
         )}
+
+        {activeTab === 'applications' && renderApplicationsTab()}
 
         {activeTab === 'documents' && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
