@@ -105,6 +105,8 @@ const CaseDetailPage = () => {
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState('')
   const [newMessage, setNewMessage] = useState('')
+  const [isSendingMessage, setIsSendingMessage] = useState(false)
+  const [pendingMessageId, setPendingMessageId] = useState(null)
   const [isApplyModalOpen, setIsApplyModalOpen] = useState(false)
   const [applicationMessage, setApplicationMessage] = useState('')
   const [documents, setDocuments] = useState([])
@@ -306,21 +308,27 @@ const CaseDetailPage = () => {
 
   const handleSendMessage = async (e) => {
     e.preventDefault()
-    
     if (!newMessage.trim()) return
-    
-    try {
-      const messageData = JSON.stringify({
-        id: ID.unique(),
-        text: newMessage.trim(),
-        senderId: currentUser.$id,
-        senderRole: currentUser.role,
+    setIsSendingMessage(true)
+    const tempId = ID.unique()
+    setPendingMessageId(tempId)
+    const messageData = JSON.stringify({
+      id: tempId,
+      text: newMessage.trim(),
+      senderId: currentUser.$id,
+      senderRole: currentUser.role,
       timestamp: new Date().toISOString()
-      })
-
+    })
+    // Optimistically update UI
+    setCaseDetails(prev => ({
+      ...prev,
+      messages: [...(prev.messages || []), messageData],
+      lastUpdated: new Date().toISOString()
+    }))
+    setNewMessage('')
+    try {
       // Update case details with new message
       const updatedMessages = [...(caseDetails.messages || []), messageData]
-      
       await databases.updateDocument(
         DATABASE_ID,
         CASE_DETAILS_COLLECTION_ID,
@@ -330,17 +338,23 @@ const CaseDetailPage = () => {
           lastUpdated: new Date().toISOString()
         }
       )
-
-      // Update local state
-      setCaseDetails(prev => ({
-      ...prev,
-        messages: updatedMessages,
-        lastUpdated: new Date().toISOString()
-    }))
-    
-    setNewMessage('')
+      // Remove loading state
+      setIsSendingMessage(false)
+      setPendingMessageId(null)
     } catch (error) {
-      console.error('Error sending message:', error)
+      // Remove the optimistically added message
+      setCaseDetails(prev => ({
+        ...prev,
+        messages: (prev.messages || []).filter(m => {
+          try {
+            return JSON.parse(m).id !== tempId
+          } catch {
+            return true
+          }
+        })
+      }))
+      setIsSendingMessage(false)
+      setPendingMessageId(null)
       setError('Failed to send message')
     }
   }
@@ -390,11 +404,10 @@ const CaseDetailPage = () => {
         </div>
       )
     }
-
     return caseDetails.messages.map((messageStr, index) => {
       const message = JSON.parse(messageStr)
       const isCurrentUser = message.senderId === currentUser.$id
-      
+      const isPending = isSendingMessage && message.id === pendingMessageId
       return (
         <div 
           key={message.id} 
@@ -405,10 +418,16 @@ const CaseDetailPage = () => {
               isCurrentUser 
                 ? 'bg-primary/10 text-gray-900' 
                 : 'bg-gray-100 text-gray-900'
-            }`}
+            } flex items-center`}
           >
             <div className="text-sm">{message.text}</div>
-            <div className="text-xs text-gray-500 mt-1">
+            {isPending && (
+              <svg className="animate-spin ml-2 h-4 w-4 text-primary" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"></path>
+              </svg>
+            )}
+            <div className="text-xs text-gray-500 mt-1 ml-2">
               {formatTimestamp(message.timestamp)}
               <span className="ml-2 capitalize">{message.senderRole}</span>
             </div>
