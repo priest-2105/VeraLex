@@ -56,6 +56,47 @@ const formatFileSize = (bytes) => {
   return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i]
 }
 
+// Helper to send notification to a user
+const sendNotification = async (userId, notification) => {
+  try {
+    const response = await databases.listDocuments(
+      DATABASE_ID,
+      import.meta.env.VITE_APPWRITE_NOTIFICATIONS_COLLECTION_ID,
+      [Query.equal('userId', userId)]
+    );
+    let notificationDoc = response.documents[0];
+    if (notificationDoc) {
+      // Update existing document
+      const updatedNotifications = [...notificationDoc.notifications, JSON.stringify(notification)];
+      await databases.updateDocument(
+        DATABASE_ID,
+        import.meta.env.VITE_APPWRITE_NOTIFICATIONS_COLLECTION_ID,
+        notificationDoc.$id,
+        {
+          notifications: updatedNotifications,
+          unreadCount: (notificationDoc.unreadCount || 0) + 1,
+          lastUpdated: new Date().toISOString()
+        }
+      );
+    } else {
+      // Create new document if not exists
+      await databases.createDocument(
+        DATABASE_ID,
+        import.meta.env.VITE_APPWRITE_NOTIFICATIONS_COLLECTION_ID,
+        ID.unique(),
+        {
+          userId,
+          notifications: [JSON.stringify(notification)],
+          unreadCount: 1,
+          lastUpdated: new Date().toISOString()
+        }
+      );
+    }
+  } catch (err) {
+    console.error('Error sending notification:', err);
+  }
+};
+
 const CaseDetailPage = () => {
   const { id } = useParams()
   const [activeTab, setActiveTab] = useState('overview')
@@ -522,6 +563,34 @@ const CaseDetailPage = () => {
       setCaseDetails(prev => ({ ...prev, lawyerAssigned: lawyer.userId, lawyerRequests: [] }))
       setApplicants([])
       setConfirmModal({ open: false, type: '', lawyer: null })
+
+      // Fetch client userId from cases collection
+      const caseDoc = await databases.getDocument(
+        DATABASE_ID,
+        CASES_COLLECTION_ID,
+        caseData.$id
+      )
+      const clientUserId = caseDoc.userId
+      // Notify client
+      await sendNotification(clientUserId, {
+        id: ID.unique(),
+        type: 'lawyer_assigned',
+        message: `Lawyer ${lawyer.name} has been assigned to your case.`,
+        caseId: caseData.$id,
+        timestamp: new Date().toISOString(),
+        read: false,
+        url: `/client/case/${caseData.$id}`
+      })
+      // Notify lawyer
+      await sendNotification(lawyer.userId, {
+        id: ID.unique(),
+        type: 'lawyer_assigned',
+        message: `You have been assigned to a new case.`,
+        caseId: caseData.$id,
+        timestamp: new Date().toISOString(),
+        read: false,
+        url: `/lawyer/my-cases`
+      })
     } catch (err) {
       setApplicantsError('Failed to accept lawyer. Please try again.')
     } finally {
@@ -569,6 +638,34 @@ const CaseDetailPage = () => {
       await addTimelineEvent(`Lawyer ${app.profile ? app.profile.firstName + ' ' + app.profile.lastName : app.lawyerId} was assigned to the case`)
       setCaseDetails(prev => ({ ...prev, lawyerAssigned: app.lawyerId, lawyerRequests: [] }))
       setConfirmAppModal({ open: false, type: '', lawyer: null })
+
+      // Fetch client userId from cases collection
+      const caseDoc = await databases.getDocument(
+        DATABASE_ID,
+        CASES_COLLECTION_ID,
+        caseData.$id
+      )
+      const clientUserId = caseDoc.userId
+      // Notify client
+      await sendNotification(clientUserId, {
+        id: ID.unique(),
+        type: 'lawyer_assigned',
+        message: `Lawyer ${app.profile ? app.profile.firstName + ' ' + app.profile.lastName : app.lawyerId} has been assigned to your case.`,
+        caseId: caseData.$id,
+        timestamp: new Date().toISOString(),
+        read: false,
+        url: `/client/case/${caseData.$id}`
+      })
+      // Notify lawyer
+      await sendNotification(app.lawyerId, {
+        id: ID.unique(),
+        type: 'lawyer_assigned',
+        message: `You have been assigned to a new case.`,
+        caseId: caseData.$id,
+        timestamp: new Date().toISOString(),
+        read: false,
+        url: `/lawyer/my-cases`
+      })
     } catch (err) {
       setApplicationsError('Failed to accept lawyer. Please try again.')
     } finally {
