@@ -573,6 +573,18 @@ const CaseDetailPage = () => {
         }
       )
       await addTimelineEvent(`Lawyer ${lawyer.name} (${lawyer.userId}) was assigned to the case`)
+      
+      // Update case status to 'in_progress'
+      await databases.updateDocument(
+        DATABASE_ID,
+        CASES_COLLECTION_ID,
+        id,
+        {
+          status: 'in_progress',
+          updatedAt: new Date().toISOString()
+        }
+      )
+
       setCaseDetails(prev => ({ ...prev, lawyerAssigned: lawyer.userId, lawyerRequests: [] }))
       setApplicants([])
       setConfirmModal({ open: false, type: '', lawyer: null })
@@ -645,6 +657,18 @@ const CaseDetailPage = () => {
         }
       )
       await addTimelineEvent(`Lawyer ${app.profile ? app.profile.firstName + ' ' + app.profile.lastName : app.lawyerId} was assigned to the case`)
+      
+      // Update case status to 'in_progress'
+      await databases.updateDocument(
+        DATABASE_ID,
+        CASES_COLLECTION_ID,
+        id,
+        {
+          status: 'in_progress',
+          updatedAt: new Date().toISOString()
+        }
+      )
+
       setCaseDetails(prev => ({ ...prev, lawyerAssigned: app.lawyerId, lawyerRequests: [] }))
       setConfirmAppModal({ open: false, type: '', lawyer: null })
       // Notify client
@@ -1320,7 +1344,7 @@ const CaseDetailPage = () => {
                       <div key={index} className="px-6 py-4 text-sm text-gray-900 grid grid-cols-12 items-center">
                         <div className="col-span-7 flex items-center">
                           <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-gray-500 mr-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-3-3v6m5 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                           </svg>
                           <span className="font-medium">{doc.name}</span>
                         </div>
