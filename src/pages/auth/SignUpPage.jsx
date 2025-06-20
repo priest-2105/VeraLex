@@ -411,6 +411,23 @@ const SignUpPage = () => {
         console.log('Client details document created.')
       }
 
+      // 2c. Create notification document for the user
+      const NOTIFICATIONS_COLLECTION_ID = import.meta.env.VITE_APPWRITE_NOTIFICATIONS_COLLECTION_ID
+      if (NOTIFICATIONS_COLLECTION_ID) {
+        await databases.createDocument(
+          DATABASE_ID,
+          NOTIFICATIONS_COLLECTION_ID,
+          createdUser.$id,
+          {
+            userId: createdUser.$id,
+            notifications: [],
+            unreadCount: 0,
+            lastUpdated: new Date().toISOString()
+          }
+        )
+        console.log('Notification document created.')
+      }
+
       // 3. Create a session for the new user so we can send a verification email
       await account.createEmailPasswordSession(data.email, data.password)
       console.log('User session created for verification.');

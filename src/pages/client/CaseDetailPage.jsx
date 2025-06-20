@@ -594,7 +594,7 @@ const CaseDetailPage = () => {
         caseId: caseData.$id,
         timestamp: new Date().toISOString(),
         read: false,
-        url: `/lawyer/my-cases`
+        url: `/lawyer/case/${caseData.$id}`
       })
       // Refresh case data
       await fetchCaseData();
