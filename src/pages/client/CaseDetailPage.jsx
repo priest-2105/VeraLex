@@ -14,7 +14,7 @@ const DATABASE_ID = import.meta.env.VITE_APPWRITE_DATABASE_ID
 const CASES_COLLECTION_ID = import.meta.env.VITE_APPWRITE_CASES_COLLECTION_ID
 const CASE_DETAILS_COLLECTION_ID = import.meta.env.VITE_APPWRITE_CASE_DETAILS_COLLECTION_ID
 const CASE_DOCUMENTS_BUCKET_ID = import.meta.env.VITE_APPWRITE_CASE_DOCUMENTS_BUCKET_ID
-const USERS_COLLECTION_ID = import.meta.env.VITE_APPWRITE_USERS_COLLECTION_ID
+const USERS_COLLECTION_ID = import.meta.env.VITE_APPWRITE_PROFILE_COLLECTION_ID
 const PROFILE_COLLECTION_ID = import.meta.env.VITE_APPWRITE_PROFILE_COLLECTION_ID
 const LAWYER_DETAILS_COLLECTION_ID = import.meta.env.VITE_APPWRITE_LAWYER_DETAILS_COLLECTION_ID
 
@@ -76,6 +76,8 @@ const CaseDetailPage = () => {
   const [parsedApplications, setParsedApplications] = useState([])
   const [applicationsLoading, setApplicationsLoading] = useState(false)
   const [applicationsError, setApplicationsError] = useState('')
+  const [confirmAppModal, setConfirmAppModal] = useState({ open: false, type: '', lawyer: null })
+  const [actionAppLoading, setActionAppLoading] = useState(false)
 
   const currentUser = useSelector(selectCurrentUser)
 
@@ -247,10 +249,19 @@ const CaseDetailPage = () => {
             [Query.equal('userId', app.lawyerId), Query.equal('role', 'lawyer'), Query.limit(1)]
           )
         )
+        const detailsPromises = appObjs.map(app =>
+          databases.listDocuments(
+            DATABASE_ID,
+            LAWYER_DETAILS_COLLECTION_ID,
+            [Query.equal('userId', app.lawyerId), Query.limit(1)]
+          )
+        )
         const profiles = await Promise.all(profilePromises)
+        const details = await Promise.all(detailsPromises)
         const combined = appObjs.map((app, idx) => ({
           ...app,
           profile: profiles[idx].documents[0],
+          details: details[idx].documents[0],
         }))
         setParsedApplications(combined)
       } catch (err) {
@@ -542,6 +553,53 @@ const CaseDetailPage = () => {
     }
   }
 
+  const handleAcceptApplication = async (app) => {
+    setActionAppLoading(true)
+    try {
+      await databases.updateDocument(
+        DATABASE_ID,
+        CASE_DETAILS_COLLECTION_ID,
+        caseDetails.$id,
+        {
+          lawyerAssigned: app.lawyerId,
+          lawyerRequests: [],
+          lastUpdated: new Date().toISOString(),
+        }
+      )
+      await addTimelineEvent(`Lawyer ${app.profile ? app.profile.firstName + ' ' + app.profile.lastName : app.lawyerId} was assigned to the case`)
+      setCaseDetails(prev => ({ ...prev, lawyerAssigned: app.lawyerId, lawyerRequests: [] }))
+      setConfirmAppModal({ open: false, type: '', lawyer: null })
+    } catch (err) {
+      setApplicationsError('Failed to accept lawyer. Please try again.')
+    } finally {
+      setActionAppLoading(false)
+    }
+  }
+
+  const handleRejectApplication = async (app) => {
+    setActionAppLoading(true)
+    try {
+      const updatedRequests = (caseDetails.lawyerRequests || []).filter(id => id !== app.lawyerId)
+      await databases.updateDocument(
+        DATABASE_ID,
+        CASE_DETAILS_COLLECTION_ID,
+        caseDetails.$id,
+        {
+          lawyerRequests: updatedRequests,
+          lastUpdated: new Date().toISOString(),
+        }
+      )
+      await addTimelineEvent(`Lawyer ${app.profile ? app.profile.firstName + ' ' + app.profile.lastName : app.lawyerId} was rejected for the case`)
+      setCaseDetails(prev => ({ ...prev, lawyerRequests: updatedRequests }))
+      setParsedApplications(prev => prev.filter(a => a.lawyerId !== app.lawyerId))
+      setConfirmAppModal({ open: false, type: '', lawyer: null })
+    } catch (err) {
+      setApplicationsError('Failed to reject lawyer. Please try again.')
+    } finally {
+      setActionAppLoading(false)
+    }
+  }
+
   // Update the messages tab to show disabled state when no lawyer is assigned
   const renderMessagesTab = () => {
     const isLawyerAssigned = Boolean(caseDetails?.lawyerAssigned)
@@ -744,22 +802,69 @@ const CaseDetailPage = () => {
           {parsedApplications.map((app, idx) => (
             <div key={idx} className="bg-white border border-gray-200 rounded-lg p-6 flex flex-col md:flex-row md:items-center justify-between">
               <div className="flex items-center gap-4 flex-1">
-                <img src={app.profile?.profileImage || '/default-avatar.png'} alt={app.profile ? `${app.profile.firstName} ${app.profile.lastName}` : app.lawyerId} className="w-16 h-16 rounded-full object-cover border" />
+                <img src={app.profile?.profileImage || app.details?.profileImage || '/default-avatar.png'} alt={app.profile ? `${app.profile.firstName} ${app.profile.lastName}` : app.lawyerId} className="w-16 h-16 rounded-full object-cover border" />
                 <div>
                   <h3 className="text-lg font-medium text-gray-900">{app.profile ? `${app.profile.firstName} ${app.profile.lastName}` : app.lawyerId}</h3>
-                  <p className="text-gray-600 text-sm">{app.profile?.email}</p>
+                  <p className="text-gray-600 text-sm">{app.profile?.email || app.details?.email}</p>
+                  {app.details?.isVerified && <span className="inline-block text-xs text-green-600 ml-1">Verified</span>}
+                  <div className="flex flex-wrap gap-2 mt-1">
+                    {Array.isArray(app.details?.specializations) && app.details.specializations.map((spec, idx) => (
+                      <span key={idx} className="px-2 py-1 bg-primary/10 text-primary text-xs font-medium rounded">{spec}</span>
+                    ))}
+                  </div>
+                  <div className="flex items-center mt-1 text-xs text-gray-500">
+                    <span>Rating: {app.details?.rating || 0} ({app.details?.reviewCount || 0} reviews)</span>
+                    <span className="mx-2">|</span>
+                    <span>{app.details?.yearsOfExperience || 0} yrs exp</span>
+                    {app.details?.location && <><span className="mx-2">|</span><span>{app.details.location}</span></>}
+                    {app.details?.hourlyRate && <><span className="mx-2">|</span><span>${app.details.hourlyRate}/hr</span></>}
+                  </div>
                 </div>
               </div>
               <div className="flex-1 mt-4 md:mt-0 md:ml-6">
-                <div className="mb-2"><b>Cover Letter:</b> {app.coverLetter}</div>
-                <div className="mb-2"><b>Proposed Fee:</b> {app.proposedFee}</div>
-                <div className="mb-2"><b>Estimated Time:</b> {app.estimatedTime}</div>
-                <div className="mb-2"><b>Experience:</b> {app.yearsOfExperience} years</div>
-                <div className="mb-2"><b>Applied On:</b> {formatDate(app.appliedAt)}</div>
+                <div className="mb-2"><b>Cover Letter:</b> {app.coverLetter || app.message}</div>
+                <div className="mb-2"><b>Experience:</b> {app.details?.yearsOfExperience || 0} years</div>
+                <div className="mb-2"><b>Applied On:</b> {formatDate(app.appliedAt || app.submittedAt)}</div>
+                {/* {currentUser.role === 'client' && !caseDetails.lawyerAssigned && ( */}
+                  <div className="flex gap-2 mt-4">
+                    <button
+                      className="btn btn-primary"
+                      onClick={() => setConfirmAppModal({ open: true, type: 'accept', lawyer: app })}
+                      disabled={actionAppLoading}
+                    >
+                      Accept
+                    </button>
+                    <button
+                      className="btn btn-outline text-red-600 border-red-200 hover:bg-red-50"
+                      onClick={() => setConfirmAppModal({ open: true, type: 'reject', lawyer: app })}
+                      disabled={actionAppLoading}
+                    >
+                      Reject
+                    </button>
+                  </div>
+                {/* )} */}
               </div>
             </div>
           ))}
         </div>
+        {/* Confirmation Modal */}
+        <LogoutConfirmationModal
+          isOpen={confirmAppModal.open}
+          onClose={() => setConfirmAppModal({ open: false, type: '', lawyer: null })}
+          onConfirm={() => {
+            if (confirmAppModal.type === 'accept') handleAcceptApplication(confirmAppModal.lawyer)
+            else if (confirmAppModal.type === 'reject') handleRejectApplication(confirmAppModal.lawyer)
+          }}
+          isLoading={actionAppLoading}
+          title={confirmAppModal.type === 'accept' ? 'Accept Lawyer?' : 'Reject Lawyer?'}
+          confirmText={confirmAppModal.type === 'accept' ? 'Accept' : 'Reject'}
+        >
+          <p className="text-gray-600 mb-6">
+            {confirmAppModal.type === 'accept'
+              ? `Are you sure you want to accept ${confirmAppModal.lawyer?.profile ? confirmAppModal.lawyer.profile.firstName + ' ' + confirmAppModal.lawyer.profile.lastName : confirmAppModal.lawyer?.lawyerId} for this case?`
+              : `Are you sure you want to reject ${confirmAppModal.lawyer?.profile ? confirmAppModal.lawyer.profile.firstName + ' ' + confirmAppModal.lawyer.profile.lastName : confirmAppModal.lawyer?.lawyerId}?`}
+          </p>
+        </LogoutConfirmationModal>
       </motion.div>
     )
   }
@@ -873,16 +978,19 @@ const CaseDetailPage = () => {
                 Applicants ({caseData.lawyerApplicants?.length || 0})
               </button>
             )}
-            <button
-              onClick={() => setActiveTab('applications')}
-              className={`flex-1 whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm text-center ${
-                activeTab === 'applications'
-                  ? 'border-primary text-primary'
-                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-              }`}
-            >
-              Applications ({parsedApplications.length || 0})
-            </button>
+            {/* Only show Applications tab if no lawyer is assigned */}
+            {!caseDetails?.lawyerAssigned && (
+              <button
+                onClick={() => setActiveTab('applications')}
+                className={`flex-1 whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm text-center ${
+                  activeTab === 'applications'
+                    ? 'border-primary text-primary'
+                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                }`}
+              >
+                Applications ({parsedApplications.length || 0})
+              </button>
+            )}
             <button
               onClick={() => setActiveTab('documents')}
               className={`flex-1 whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm text-center ${
@@ -923,10 +1031,7 @@ const CaseDetailPage = () => {
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
             <h2 className="text-xl font-semibold mb-4">Case Details</h2>
             <p className="text-gray-700 mb-6 whitespace-pre-wrap">{caseData.description}</p>
-            
-            {/* Add the assigned lawyer card */}
-            {renderAssignedLawyerCard()}
-            
+            {/* --- MOVE ASSIGNED LAWYER CARD TO BOTTOM --- */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
               <div>
                 <h3 className="text-lg font-medium mb-2">Key Information</h3>
@@ -939,7 +1044,7 @@ const CaseDetailPage = () => {
                 </ul>
               </div>
 
-              {/* Conditionally render Assigned Lawyer section */}
+              {/* Conditionally render Assigned Lawyer section (legacy) */}
               {caseData.lawyer && (currentUser.role === 'client' || currentUser.id === caseData.lawyer.id) && (
                 <div>
                   <h3 className="text-lg font-medium mb-3">Assigned Lawyer</h3>
@@ -981,6 +1086,8 @@ const CaseDetailPage = () => {
                 </div>
               )}
             </div>
+            {/* --- ASSIGNED LAWYER CARD AT BOTTOM --- */}
+            {renderAssignedLawyerCard()}
           </motion.div>
         )}
 
@@ -1048,14 +1155,6 @@ const CaseDetailPage = () => {
                             </div>
                             
                             <div className="grid grid-cols-2 gap-4 mb-4">
-                              <div>
-                                <span className="text-sm font-medium text-gray-500">Proposed Fee</span>
-                                <p className="text-primary font-bold">{lawyer.proposedFee}</p>
-                              </div>
-                              <div>
-                                <span className="text-sm font-medium text-gray-500">Estimated Time</span>
-                                <p className="text-gray-900">{lawyer.estimatedTime}</p>
-                              </div>
                               <div>
                                 <span className="text-sm font-medium text-gray-500">Experience</span>
                                 <p className="text-gray-900">{lawyer.yearsOfExperience} years</p>
