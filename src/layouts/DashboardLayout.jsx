@@ -35,9 +35,9 @@ const DashboardLayout = () => {
   
   // Fetch notifications when user is logged in
   useEffect(() => {
+    let intervalId;
     const fetchNotifications = async () => {
       if (!currentUser?.$id) return
-
       setIsLoadingNotifications(true)
       try {
         const response = await databases.listDocuments(
@@ -45,13 +45,11 @@ const DashboardLayout = () => {
           NOTIFICATIONS_COLLECTION_ID,
           [Query.equal('userId', currentUser.$id)]
         )
-
         if (response.documents.length > 0) {
           const notificationDoc = response.documents[0]
           const parsedNotifications = notificationDoc.notifications
             .map(n => JSON.parse(n))
             .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp))
-          
           setNotifications(parsedNotifications)
           setUnreadCount(notificationDoc.unreadCount || 0)
         } else {
@@ -64,8 +62,9 @@ const DashboardLayout = () => {
         setIsLoadingNotifications(false)
       }
     }
-
     fetchNotifications()
+    intervalId = setInterval(fetchNotifications, 10000)
+    return () => clearInterval(intervalId)
   }, [currentUser?.$id])
 
   // Function to mark a single notification as read

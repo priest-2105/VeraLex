@@ -123,94 +123,84 @@ const CaseDetailPage = () => {
   const currentUser = useSelector(selectCurrentUser)
 
   // Fetch case data from Appwrite
-  useEffect(() => {
-    const fetchCaseData = async () => {
-      setIsLoading(true)
-      setError('')
-      
-      try {
-        // 1. Fetch main case document
-        const mainCase = await databases.getDocument(
-          DATABASE_ID,
-          CASES_COLLECTION_ID,
-          id
-        )
-
-        // 2. Fetch case details document
-        const detailsQuery = await databases.listDocuments(
-          DATABASE_ID,
-          CASE_DETAILS_COLLECTION_ID,
-          [
-            Query.equal('caseId', id)
-          ]
-        )
-
-        const caseDetailsDoc = detailsQuery.documents[0]
-
-        // 3. If there's an assigned lawyer, fetch their details
-        if (caseDetailsDoc?.lawyerAssigned) {
-          try {
-            const lawyerDoc = await databases.getDocument(
-              DATABASE_ID,
-              USERS_COLLECTION_ID,
-              caseDetailsDoc.lawyerAssigned
-            )
-            setAssignedLawyer(lawyerDoc)
-          } catch (error) {
-            console.error('Error fetching lawyer details:', error)
-            // Don't set error state here, just log it
-          }
+  const fetchCaseData = async () => {
+    setIsLoading(true)
+    setError('')
+    try {
+      // 1. Fetch main case document
+      const mainCase = await databases.getDocument(
+        DATABASE_ID,
+        CASES_COLLECTION_ID,
+        id
+      )
+      // 2. Fetch case details document
+      const detailsQuery = await databases.listDocuments(
+        DATABASE_ID,
+        CASE_DETAILS_COLLECTION_ID,
+        [
+          Query.equal('caseId', id)
+        ]
+      )
+      const caseDetailsDoc = detailsQuery.documents[0]
+      // 3. If there's an assigned lawyer, fetch their details
+      if (caseDetailsDoc?.lawyerAssigned) {
+        try {
+          const lawyerDoc = await databases.getDocument(
+            DATABASE_ID,
+            USERS_COLLECTION_ID,
+            caseDetailsDoc.lawyerAssigned
+          )
+          setAssignedLawyer(lawyerDoc)
+        } catch (error) {
+          console.error('Error fetching lawyer details:', error)
         }
-
-        // 4. Fetch document metadata if there are any documents
-        let documentMetadata = []
-        if (caseDetailsDoc?.documents?.length > 0) {
-          const filePromises = caseDetailsDoc.documents.map(async (fileId) => {
-            try {
-              const file = await storage.getFile(CASE_DOCUMENTS_BUCKET_ID, fileId)
-              const fileUrl = storage.getFileView(CASE_DOCUMENTS_BUCKET_ID, fileId)
-              return {
-                id: fileId,
-                name: file.name,
-                size: formatFileSize(file.size),
-                type: file.mimeType,
-                url: fileUrl,
-                uploadedAt: file.$createdAt
-              }
-            } catch (error) {
-              console.error(`Error fetching file ${fileId}:`, error)
-              return null
-            }
-          })
-          
-          documentMetadata = (await Promise.all(filePromises)).filter(Boolean)
-        }
-
-        // 5. Combine the data
-        setCaseData({
-          ...mainCase,
-          documents: documentMetadata,
-          deadline: caseDetailsDoc?.deadline,
-          lawyerId: caseDetailsDoc?.lawyerId,
-          lawyerAssigned: caseDetailsDoc?.lawyerAssigned,
-          applications: caseDetailsDoc?.applications || [],
-          notes: caseDetailsDoc?.notes || '',
-          lastUpdated: caseDetailsDoc?.lastUpdated
-        })
-        
-        setCaseDetails(caseDetailsDoc)
-        setDocuments(documentMetadata)
-
-      } catch (error) {
-        console.error('Error fetching case data:', error)
-        setError(error.message || 'Failed to load case data')
-      } finally {
-        setIsLoading(false)
       }
+      // 4. Fetch document metadata if there are any documents
+      let documentMetadata = []
+      if (caseDetailsDoc?.documents?.length > 0) {
+        const filePromises = caseDetailsDoc.documents.map(async (fileId) => {
+          try {
+            const file = await storage.getFile(CASE_DOCUMENTS_BUCKET_ID, fileId)
+            const fileUrl = storage.getFileView(CASE_DOCUMENTS_BUCKET_ID, fileId)
+            return {
+              id: fileId,
+              name: file.name,
+              size: formatFileSize(file.size),
+              type: file.mimeType,
+              url: fileUrl,
+              uploadedAt: file.$createdAt
+            }
+          } catch (error) {
+            console.error(`Error fetching file ${fileId}:`, error)
+            return null
+          }
+        })
+        documentMetadata = (await Promise.all(filePromises)).filter(Boolean)
+      }
+      // 5. Combine the data
+      setCaseData({
+        ...mainCase,
+        documents: documentMetadata,
+        deadline: caseDetailsDoc?.deadline,
+        lawyerId: caseDetailsDoc?.lawyerId,
+        lawyerAssigned: caseDetailsDoc?.lawyerAssigned,
+        applications: caseDetailsDoc?.applications || [],
+        notes: caseDetailsDoc?.notes || '',
+        lastUpdated: caseDetailsDoc?.lastUpdated
+      })
+      setCaseDetails(caseDetailsDoc)
+      setDocuments(documentMetadata)
+    } catch (error) {
+      console.error('Error fetching case data:', error)
+      setError(error.message || 'Failed to load case data')
+    } finally {
+      setIsLoading(false)
     }
+  }
 
+  useEffect(() => {
     if (id) {
-    fetchCaseData()
+      fetchCaseData()
     }
   }, [id])
 
@@ -506,6 +496,8 @@ const CaseDetailPage = () => {
     
     // Switch to overview tab
     setActiveTab('overview')
+    // Refresh case data
+    await fetchCaseData();
     } catch (error) {
       console.error('Error appointing lawyer:', error)
       setError('Failed to appoint lawyer')
@@ -540,6 +532,8 @@ const CaseDetailPage = () => {
       // Close modal
     setIsApplyModalOpen(false)
     setApplicationMessage('')
+    // Refresh case data
+    await fetchCaseData();
     } catch (error) {
       console.error('Error submitting application:', error)
       setError('Failed to submit application')
@@ -563,16 +557,8 @@ const CaseDetailPage = () => {
       setCaseDetails(prev => ({ ...prev, lawyerAssigned: lawyer.userId, lawyerRequests: [] }))
       setApplicants([])
       setConfirmModal({ open: false, type: '', lawyer: null })
-
-      // Fetch client userId from cases collection
-      const caseDoc = await databases.getDocument(
-        DATABASE_ID,
-        CASES_COLLECTION_ID,
-        caseData.$id
-      )
-      const clientUserId = caseDoc.userId
       // Notify client
-      await sendNotification(clientUserId, {
+      await sendNotification(caseData.userId, {
         id: ID.unique(),
         type: 'lawyer_assigned',
         message: `Lawyer ${lawyer.name} has been assigned to your case.`,
@@ -591,6 +577,8 @@ const CaseDetailPage = () => {
         read: false,
         url: `/lawyer/my-cases`
       })
+      // Refresh case data
+      await fetchCaseData();
     } catch (err) {
       setApplicantsError('Failed to accept lawyer. Please try again.')
     } finally {
@@ -615,6 +603,8 @@ const CaseDetailPage = () => {
       setCaseDetails(prev => ({ ...prev, lawyerRequests: updatedRequests }))
       setApplicants(prev => prev.filter(a => a.userId !== lawyer.userId))
       setConfirmModal({ open: false, type: '', lawyer: null })
+      // Refresh case data
+      await fetchCaseData();
     } catch (err) {
       setApplicantsError('Failed to reject lawyer. Please try again.')
     } finally {
@@ -638,16 +628,8 @@ const CaseDetailPage = () => {
       await addTimelineEvent(`Lawyer ${app.profile ? app.profile.firstName + ' ' + app.profile.lastName : app.lawyerId} was assigned to the case`)
       setCaseDetails(prev => ({ ...prev, lawyerAssigned: app.lawyerId, lawyerRequests: [] }))
       setConfirmAppModal({ open: false, type: '', lawyer: null })
-
-      // Fetch client userId from cases collection
-      const caseDoc = await databases.getDocument(
-        DATABASE_ID,
-        CASES_COLLECTION_ID,
-        caseData.$id
-      )
-      const clientUserId = caseDoc.userId
       // Notify client
-      await sendNotification(clientUserId, {
+      await sendNotification(caseData.userId, {
         id: ID.unique(),
         type: 'lawyer_assigned',
         message: `Lawyer ${app.profile ? app.profile.firstName + ' ' + app.profile.lastName : app.lawyerId} has been assigned to your case.`,
@@ -666,6 +648,8 @@ const CaseDetailPage = () => {
         read: false,
         url: `/lawyer/my-cases`
       })
+      // Refresh case data
+      await fetchCaseData();
     } catch (err) {
       setApplicationsError('Failed to accept lawyer. Please try again.')
     } finally {
@@ -690,6 +674,8 @@ const CaseDetailPage = () => {
       setCaseDetails(prev => ({ ...prev, lawyerRequests: updatedRequests }))
       setParsedApplications(prev => prev.filter(a => a.lawyerId !== app.lawyerId))
       setConfirmAppModal({ open: false, type: '', lawyer: null })
+      // Refresh case data
+      await fetchCaseData();
     } catch (err) {
       setApplicationsError('Failed to reject lawyer. Please try again.')
     } finally {
