@@ -36,6 +36,7 @@ const getStatusBadge = (status) => {
   }
 }
 
+
 const DashboardPage = () => {
   const currentUser = useSelector(selectCurrentUser)
   const [stats, setStats] = useState({ activeClients: 0, openApplications: 0, completedCases: 0 })
