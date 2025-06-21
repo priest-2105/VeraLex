@@ -70,7 +70,7 @@ const AvailableCasesPage = () => {
           DATABASE_ID,
           CASES_COLLECTION_ID,
           [
-            Query.equal('status', 'pending'),
+            Query.equal('status', 'in_progress'),
             Query.orderDesc('createdAt')
           ]
         )
@@ -535,16 +535,12 @@ const AvailableCasesPage = () => {
                   </Link>
                   <button 
                     onClick={() => {
-                      if (!caseItem.hasApplied && caseItem.status === 'pending') {
-                        setApplicationModal({ isOpen: true, caseId: caseItem.id })
-                      }
+                      // This button is disabled as cases are already in progress
                     }}
                     className="btn btn-outline w-full"
-                    disabled={caseItem.status !== 'pending' || caseItem.hasApplied}
+                    disabled={true}
                   >
-                    {caseItem.hasApplied
-                      ? 'Applied'
-                      : (caseItem.status === 'pending' ? 'Apply Now' : 'Not Accepting Applications')}
+                    {caseItem.hasApplied ? 'Applied' : 'Not Accepting Applications'}
                   </button>
                 </div>
               </div>

@@ -467,7 +467,7 @@ const CaseDetailPage = () => {
           NOTIFICATIONS_COLLECTION_ID,
           lawyerNotifications.documents[0].$id,
           {
-            notifications: [...lawyerNotifications.documents[0].notifications, lawyerNotificationData],
+            notifications: [...lawyerNotifications.documents[0].notifications, JSON.stringify(lawyerNotificationData)],
             lastUpdated: currentTime
           }
         )
@@ -479,7 +479,7 @@ const CaseDetailPage = () => {
           ID.unique(),
           {
             userId: currentUser.$id,
-            notifications: [lawyerNotificationData],
+            notifications: [JSON.stringify(lawyerNotificationData)],
             createdAt: currentTime,
             lastUpdated: currentTime
           }
@@ -512,7 +512,7 @@ const CaseDetailPage = () => {
           NOTIFICATIONS_COLLECTION_ID,
           clientNotifications.documents[0].$id,
           {
-            notifications: [...clientNotifications.documents[0].notifications, clientNotificationData],
+            notifications: [...clientNotifications.documents[0].notifications, JSON.stringify(clientNotificationData)],
             lastUpdated: currentTime
           }
         )
@@ -524,7 +524,7 @@ const CaseDetailPage = () => {
           ID.unique(),
           {
             userId: caseData.userId,
-            notifications: [clientNotificationData],
+            notifications: [JSON.stringify(clientNotificationData)],
             createdAt: currentTime,
             lastUpdated: currentTime
           }
