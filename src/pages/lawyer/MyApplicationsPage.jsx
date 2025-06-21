@@ -36,7 +36,6 @@ const getStatusBadge = (status) => {
 }
 
 const MyApplicationsPage = () => {
-  const [activeFilter, setActiveFilter] = useState('all')
   const [applications, setApplications] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
@@ -74,9 +73,26 @@ const MyApplicationsPage = () => {
 
               // Find this lawyer's application in the lawyerRequests array
               const lawyerRequests = caseDetail.lawyerRequests || []
-              const lawyerApplication = lawyerRequests
-                .map(app => typeof app === 'string' ? JSON.parse(app) : app)
-                .find(app => app.lawyerId === currentUser.$id)
+              let lawyerApplication = null
+              
+              // Safely parse the lawyerRequests array
+              try {
+                const parsedRequests = lawyerRequests.map(item => {
+                  if (typeof item === 'string') {
+                    try {
+                      return JSON.parse(item)
+                    } catch (parseError) {
+                      console.warn('Failed to parse lawyer request item:', item, parseError)
+                      return null
+                    }
+                  }
+                  return item
+                }).filter(Boolean)
+                
+                lawyerApplication = parsedRequests.find(app => app.lawyerId === currentUser.$id)
+              } catch (parseError) {
+                console.warn('Failed to parse lawyerRequests for case:', caseDetail.caseId, parseError)
+              }
 
               // Fetch client profile for name and photo
               let clientName = 'Unknown'
@@ -133,11 +149,6 @@ const MyApplicationsPage = () => {
     fetchApplications()
   }, [currentUser?.$id])
 
-  // Filter applications based on selected status
-  const filteredApplications = activeFilter === 'all' 
-    ? applications 
-    : applications.filter(app => app.status === activeFilter)
-
   if (loading) {
     return (
       <div className="flex justify-center items-center min-h-[400px]">
@@ -167,44 +178,10 @@ const MyApplicationsPage = () => {
         <p className="text-gray-600 mt-1">Track and manage your case applications</p>
       </div>
 
-      {/* Status Filter Tabs */}
-      <div className="flex mb-6 border-b">
-        <button 
-          className={`py-2 px-4 font-medium text-sm ${activeFilter === 'all' ? 'text-primary border-b-2 border-primary' : 'text-gray-500 hover:text-gray-700'}`}
-          onClick={() => setActiveFilter('all')}
-        >
-          All Applications
-        </button>
-        <button 
-          className={`py-2 px-4 font-medium text-sm ${activeFilter === 'pending' ? 'text-primary border-b-2 border-primary' : 'text-gray-500 hover:text-gray-700'}`}
-          onClick={() => setActiveFilter('pending')}
-        >
-          Pending
-        </button>
-        <button 
-          className={`py-2 px-4 font-medium text-sm ${activeFilter === 'in_review' ? 'text-primary border-b-2 border-primary' : 'text-gray-500 hover:text-gray-700'}`}
-          onClick={() => setActiveFilter('in_review')}
-        >
-          In Review
-        </button>
-        <button 
-          className={`py-2 px-4 font-medium text-sm ${activeFilter === 'accepted' ? 'text-primary border-b-2 border-primary' : 'text-gray-500 hover:text-gray-700'}`}
-          onClick={() => setActiveFilter('accepted')}
-        >
-          Accepted
-        </button>
-        <button 
-          className={`py-2 px-4 font-medium text-sm ${activeFilter === 'rejected' ? 'text-primary border-b-2 border-primary' : 'text-gray-500 hover:text-gray-700'}`}
-          onClick={() => setActiveFilter('rejected')}
-        >
-          Rejected
-        </button>
-      </div>
-
       {/* Applications List */}
       <div className="space-y-6">
-        {filteredApplications.length > 0 ? (
-          filteredApplications.map((application, index) => (
+        {applications.length > 0 ? (
+          applications.map((application, index) => (
             <motion.div
               key={application.id}
               initial={{ opacity: 0, y: 20 }}
