@@ -245,8 +245,11 @@ const MyApplicationsPage = () => {
                   
                   <div>
                     {application.status === 'pending' && (
-                      <button className="btn btn-outline text-sm py-1 px-4">
-                        Edit Application
+                      <button 
+                        onClick={() => window.location.href = `/lawyer/case/${application.caseId}`}
+                        className="btn btn-outline text-sm py-1 px-4"
+                      >
+                        View Application
                       </button>
                     )}
                     {application.status === 'accepted' && (
