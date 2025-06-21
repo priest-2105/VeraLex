@@ -1,15 +1,20 @@
 import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
-import { databases } from '../../appwrite/appwrite'
-import { useAuth } from '../../context/AuthContext'
-import { ID, Query } from 'appwrite'
+import { useSelector } from 'react-redux'
+import { selectCurrentUser } from '../../store/authSlice'
+import { databases } from '../../lib/appwrite'
+import { Query } from 'appwrite'
+import LoadingSpinner from '../../components/common/LoadingSpinner'
 
 // Constants
-const CASES_COLLECTION_ID = 'cases'
-const CASE_DETAILS_COLLECTION_ID = 'caseDetails'
+const DATABASE_ID = import.meta.env.VITE_APPWRITE_DATABASE_ID
+const CASES_COLLECTION_ID = import.meta.env.VITE_APPWRITE_CASES_COLLECTION_ID
+const CASE_DETAILS_COLLECTION_ID = import.meta.env.VITE_APPWRITE_CASE_DETAILS_COLLECTION_ID
+const PROFILE_COLLECTION_ID = import.meta.env.VITE_APPWRITE_PROFILE_COLLECTION_ID
 
 // Helper function to format date
 const formatDate = (dateString) => {
+  if (!dateString) return 'N/A';
   const options = { year: 'numeric', month: 'long', day: 'numeric' }
   return new Date(dateString).toLocaleDateString('en-US', options)
 }
@@ -35,7 +40,7 @@ const MyApplicationsPage = () => {
   const [applications, setApplications] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
-  const { currentUser } = useAuth()
+  const currentUser = useSelector(selectCurrentUser)
 
   useEffect(() => {
     const fetchApplications = async () => {
@@ -46,10 +51,12 @@ const MyApplicationsPage = () => {
         setError(null)
 
         // Fetch all case details where the current lawyer has applied
+        // We need to find cases where the lawyer's ID is in the lawyerRequests field
         const response = await databases.listDocuments(
+          DATABASE_ID,
           CASE_DETAILS_COLLECTION_ID,
           [
-            Query.search('applications', currentUser.$id),
+            Query.search('lawyerRequests', currentUser.$id),
             Query.limit(100)
           ]
         )
@@ -57,33 +64,64 @@ const MyApplicationsPage = () => {
         // Process the applications
         const processedApplications = await Promise.all(
           response.documents.map(async (caseDetail) => {
-            // Get the corresponding case data
-            const caseData = await databases.getDocument(
-              CASES_COLLECTION_ID,
-              caseDetail.caseId
-            )
+            try {
+              // Get the corresponding case data
+              const caseData = await databases.getDocument(
+                DATABASE_ID,
+                CASES_COLLECTION_ID,
+                caseDetail.caseId
+              )
 
-            // Find this lawyer's application
-            const lawyerApplication = caseDetail.applications
-              .map(app => typeof app === 'string' ? JSON.parse(app) : app)
-              .find(app => app.lawyerId === currentUser.$id)
+              // Find this lawyer's application in the lawyerRequests array
+              const lawyerRequests = caseDetail.lawyerRequests || []
+              const lawyerApplication = lawyerRequests
+                .map(app => typeof app === 'string' ? JSON.parse(app) : app)
+                .find(app => app.lawyerId === currentUser.$id)
 
-            return {
-              id: `${caseDetail.caseId}-${currentUser.$id}`,
-              caseId: caseDetail.caseId,
-              caseTitle: caseData.title,
-              clientName: caseData.clientName,
-              clientPhoto: caseData.clientPhoto || 'https://randomuser.me/api/portraits/lego/1.jpg',
-              appliedAt: lawyerApplication?.submittedAt || caseDetail.lastUpdated,
-              status: lawyerApplication?.status || 'pending',
-              cover: lawyerApplication?.message || '',
-              caseType: caseData.caseType,
-              caseStatus: caseData.status
+              // Fetch client profile for name and photo
+              let clientName = 'Unknown'
+              let clientPhoto = 'https://randomuser.me/api/portraits/lego/1.jpg'
+              try {
+                const profileRes = await databases.listDocuments(
+                  DATABASE_ID,
+                  PROFILE_COLLECTION_ID,
+                  [
+                    Query.equal('userId', caseData.userId),
+                    Query.equal('role', 'client'),
+                    Query.limit(1)
+                  ]
+                )
+                if (profileRes.documents.length > 0) {
+                  const clientProfile = profileRes.documents[0]
+                  clientName = `${clientProfile.firstName || ''} ${clientProfile.lastName || ''}`.trim() || 'Unknown'
+                  clientPhoto = clientProfile.profileImage || clientPhoto
+                }
+              } catch (err) {
+                console.error(`Failed to fetch profile for user ${caseData.userId}:`, err)
+              }
+
+              return {
+                id: `${caseDetail.caseId}-${currentUser.$id}`,
+                caseId: caseDetail.caseId,
+                caseTitle: caseData.title,
+                clientName,
+                clientPhoto,
+                appliedAt: lawyerApplication?.submittedAt || caseDetail.lastUpdated || caseDetail.$createdAt,
+                status: lawyerApplication?.status || 'pending',
+                cover: lawyerApplication?.message || '',
+                caseType: caseData.caseType,
+                caseStatus: caseData.status
+              }
+            } catch (err) {
+              console.error(`Error processing case ${caseDetail.caseId}:`, err)
+              return null
             }
           })
         )
 
-        setApplications(processedApplications)
+        // Filter out any null results from failed processing
+        const validApplications = processedApplications.filter(Boolean)
+        setApplications(validApplications)
       } catch (err) {
         console.error('Error fetching applications:', err)
         setError('Failed to load applications. Please try again later.')
@@ -103,7 +141,7 @@ const MyApplicationsPage = () => {
   if (loading) {
     return (
       <div className="flex justify-center items-center min-h-[400px]">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+        <LoadingSpinner />
       </div>
     )
   }
@@ -236,7 +274,7 @@ const MyApplicationsPage = () => {
                     )}
                     {application.status === 'accepted' && (
                       <button 
-                        onClick={() => window.location.href = `/lawyer/cases/${application.caseId}`}
+                        onClick={() => window.location.href = `/lawyer/case/${application.caseId}`}
                         className="btn btn-primary text-sm py-1 px-4"
                       >
                         View Case Details
